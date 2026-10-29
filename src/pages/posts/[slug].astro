@@ -1,0 +1,238 @@
+---
+import { Image } from 'astro:assets';
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Toc from '../../components/Toc.astro';
+import Icon from '../../components/Icon.astro';
+import { getCoverPalette } from '../../lib/cover-palette';
+import {
+  coverOf,
+  coverSourceOf,
+  fmtDate,
+  getListedPosts,
+  getRenderablePosts,
+  isUnlisted,
+  plainSummary,
+  postUrl,
+  readingMinutes,
+  tagSlug,
+  tagUrl,
+  wordCount,
+  type Post,
+} from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const all = await getRenderablePosts();
+  const listed = await getListedPosts();
+  return all.map((post) => {
+    const i = listed.findIndex((p) => p.id === post.id);
+    return {
+      params: { slug: post.id },
+      props: {
+        post,
+        newer: i > 0 ? listed[i - 1] : undefined,
+        older: i >= 0 && i < listed.length - 1 ? listed[i + 1] : undefined,
+        // tag pages exist only for tags used by listed posts
+        taggedSlugs: [...new Set(listed.flatMap((p) => p.data.tags.map(tagSlug)))],
+      },
+    };
+  });
+}
+
+interface Props { post: Post; newer?: Post; older?: Post; taggedSlugs: string[] }
+const { post, newer, older, taggedSlugs } = Astro.props;
+const { Content, headings } = await render(post);
+const cover = coverOf(post);
+const accentPalette = await getCoverPalette(coverSourceOf(post));
+const words = wordCount(post.body);
+const unlisted = isUnlisted(post);
+// heading text includes the prepended level marker (## …); drop it for the outline
+const toc = headings
+  .filter((h) => h.depth >= 2 && h.depth <= 3)
+  .map((h) => ({ ...h, text: h.text.replace(/^#+/, '').trim() }));
+import { i18n } from '../../lib/i18n';
+const { lang, t, l } = i18n(Astro.url);
+const updated = post.data.lastmod && post.data.lastmod > post.data.date ? post.data.lastmod : undefined;
+const topDepth = Math.min(...toc.map((x) => x.depth));
+// the stats row; with a cover it is rendered twice, in the cover and below it,
+// and CSS shows exactly one (.meta-in-hero above 743px, .meta-below on phones)
+const meta: { label: string; value: string; iso?: string }[] = [
+  { label: t('published'), value: fmtDate(post.data.date), iso: post.data.date.toISOString() },
+  ...(updated ? [{ label: t('updated'), value: fmtDate(updated), iso: updated.toISOString() }] : []),
+  { label: t('length'), value: t('words', { n: words.toLocaleString() }) },
+  { label: t('reading'), value: t('aboutMin', { n: readingMinutes(words) }) },
+  ...(toc.length > 1 ? [{ label: t('sections'), value: t('sectionCount', { n: toc.filter((h) => h.depth === topDepth).length }) }] : []),
+  ...(unlisted ? [{ label: t('status'), value: t('unlisted') }] : []),
+];
+---
+<Base
+  immersive
+  coverHero={Boolean(cover)}
+  title={post.data.title}
+  description={post.data.subtitle ?? plainSummary(post, 150)}
+  image={cover?.src}
+  type="article"
+  noindex={unlisted}
+  accentPalette={accentPalette}
+>
+  <div id="read-progress" class="fixed inset-x-0 top-0 z-50 h-0.5 origin-left scale-x-0 bg-accent" aria-hidden="true"></div>
+
+  <article>
+    <header class:list={['article-hero', { 'has-cover': cover }]}>
+      {cover && (
+        <div class="hero-media" aria-hidden="true">
+          <Image
+            src={cover}
+            alt=""
+            widths={[640, 1024, 1440, 2048, 2560]}
+            sizes="100vw"
+            loading="eager"
+            fetchpriority="high"
+          />
+        </div>
+      )}
+      {cover && (
+        /* a cover already in the cache is ready before the first paint: no fade,
+           the settle zoom starts at once (Base.astro's head handles the rest) */
+        <script is:inline>
+          (() => {
+            const m = document.currentScript.previousElementSibling;
+            const img = m && m.querySelector('img');
+            if (img && img.complete) m.classList.add('is-ready');
+          })();
+        </script>
+      )}
+      <div class="read-grid article-head">
+        <div class="head-inner">
+      <nav class="article-crumb reveal" aria-label={t('crumb')}>
+        <a href={l('/')}>~</a><span>/</span><a href={l('/posts/')}>posts</a><span>/</span><span class="crumb-current">{post.id}</span>
+      </nav>
+      {post.data.tags.length > 0 && (
+        <p class="article-kicker reveal">
+          {post.data.tags.map((tg) => (taggedSlugs.includes(tagSlug(tg)) ? <a href={tagUrl(tg, lang)}>#{tg}</a> : <span>#{tg}</span>))}
+        </p>
+      )}
+      <h1 class="article-title reveal" style="animation-delay:60ms">{post.data.title}</h1>
+      {post.data.subtitle && <p class="article-dek reveal" style="animation-delay:100ms">{post.data.subtitle}</p>}
+      <dl class:list={['article-meta reveal', { 'meta-in-hero': cover }]} style="animation-delay:140ms">
+        {meta.map((m) => <div><dt>{m.label}</dt><dd>{m.iso ? <time datetime={m.iso}>{m.value}</time> : m.value}</dd></div>)}
+      </dl>
+        </div>
+      </div>
+    </header>
+    {cover && (
+      <div class="read-grid meta-below">
+        <dl class="article-meta">
+          {meta.map((m) => <div><dt>{m.label}</dt><dd>{m.iso ? <time datetime={m.iso}>{m.value}</time> : m.value}</dd></div>)}
+        </dl>
+      </div>
+    )}
+
+    <div class="read-grid article-body">
+      {toc.length > 1 && <Toc headings={toc} />}
+      <div class="measure w-full">
+        <div class="prose prose-nit" data-pagefind-body={unlisted ? undefined : ''}>
+          <Content />
+        </div>
+        <p class="article-end" aria-label={t('articleEnd')}>EOF</p>
+      </div>
+    </div>
+  </article>
+
+  <div class="wrap post-nav-wrap">
+    <nav class="post-nav" aria-label={t('prevNext')}>
+      {older ? (
+        <a href={postUrl(older, lang)} class="prev">
+          <span class="label">{t('prev')}</span>
+          <span class="title">{older.data.title}</span>
+        </a>
+      ) : (
+        <a href={l('/posts/')} class="prev">
+          <span class="label">{t('toIndex')}</span>
+          <span class="title">{t('backToAll')}</span>
+        </a>
+      )}
+      {newer ? (
+        <a href={postUrl(newer, lang)} class="next">
+          <span class="label">{t('next')}</span>
+          <span class="title">{newer.data.title}</span>
+        </a>
+      ) : (
+        <a href={l('/')} class="next">
+          <span class="label">{t('toHome')}</span>
+          <span class="title">{t('backHome')}</span>
+        </a>
+      )}
+    </nav>
+  </div>
+</Base>
+
+<script>
+  // images: a quiet placeholder box until the file arrives, then a fade-in
+  document.querySelectorAll<HTMLImageElement>('.prose-nit img').forEach((img) => {
+    // a captioned figure takes the image's laid-out width, so its caption does too
+    const figure = img.closest<HTMLElement>('.md-figure');
+    const w = parseFloat(img.style.width) || Number(img.getAttribute('width'));
+    if (figure && w > 0) figure.style.setProperty('--img-w', `${w}px`);
+    const frame = document.createElement('span');
+    frame.className = 'img-frame';
+    img.replaceWith(frame);
+    frame.append(img);
+    const done = () => frame.classList.add('is-loaded');
+    if (img.complete && img.naturalWidth) done();
+    else {
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    }
+  });
+
+  // reading progress
+  const bar = document.getElementById('read-progress');
+  const article = document.querySelector('article');
+  if (bar && article) {
+    // measured once per frame at most, not on every scroll event
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const r = article.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+      bar.style.transform = `scaleX(${p})`;
+    };
+    addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+  }
+
+  // image lightbox
+  document.querySelectorAll<HTMLImageElement>('.prose-nit img').forEach((img) => {
+    if (img.closest('a')) return;
+    img.addEventListener('click', () => {
+      const box = document.createElement('div');
+      box.className = 'lightbox';
+      const big = new Image();
+      big.src = img.currentSrc || img.src;
+      big.alt = img.alt;
+      box.append(big);
+      const close = () => {
+        box.classList.remove('open');
+        setTimeout(() => box.remove(), 200);
+        removeEventListener('keydown', onKey);
+      };
+      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+      box.addEventListener('click', close);
+      addEventListener('keydown', onKey);
+      document.body.append(box);
+      requestAnimationFrame(() => box.classList.add('open'));
+      // the picture itself shows once decoded, never half-drawn
+      const show = () => big.classList.add('is-ready');
+      big.decode().then(show, show);
+    });
+  });
+
+  // external links open in a new tab
+  document.querySelectorAll<HTMLAnchorElement>('.prose-nit a[href^="http"]').forEach((a) => {
+    if (a.host !== location.host) {
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+  });
+</script>

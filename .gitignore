@@ -1,4 +1,10 @@
-.DS_Store
-__pycache__/
-_site/
 node_modules/
+dist/
+.astro/
+.cache/
+.DS_Store
+.env
+.env.*
+*.log
+gallery/site/public/img/
+gallery/site/src/data/gallery.json

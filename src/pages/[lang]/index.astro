@@ -1,0 +1,6 @@
+---
+// English / Japanese interface: same page, chrome localised from the URL.
+import Page from '../index.astro';
+export const getStaticPaths = () => [{ params: { lang: 'en' } }, { params: { lang: 'ja' } }];
+---
+<Page />

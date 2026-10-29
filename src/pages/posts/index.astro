@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+import PageHead from '../../components/PageHead.astro';
+import PostRow from '../../components/PostRow.astro';
+import DotMatrix from '../../components/DotMatrix.astro';
+import { getListedPosts } from '../../lib/posts';
+import { i18n } from '../../lib/i18n';
+const { t } = i18n(Astro.url);
+
+const posts = await getListedPosts();
+const years = Map.groupBy(posts, (p) => p.data.date.getFullYear());
+---
+<Base title={t('posts')} description={t('postsMeta')}>
+  <PageHead cmd="ls -lt ./posts" dot="POSTS" title={t('postsTitle')} desc={t('postsDesc', { n: posts.length })} />
+  <div class="wrap space-y-14">
+    {[...years].map(([year, list]) => (
+      <section class="grid gap-4 md:grid-cols-[9rem_1fr]">
+        <h2 class="year-head md:sticky md:top-24 md:self-start">
+          <DotMatrix text={String(year)} class="h-5 text-fg" />
+          <span class="term-sm mt-2 block">[{list.length} {list.length === 1 ? 'post' : 'posts'}]</span>
+        </h2>
+        <ul class="-mx-3 divide-y divide-line border-t border-line sm:-mx-4 md:border-t-0">
+          {list.map((p) => <PostRow post={p} showYear={false} />)}
+        </ul>
+      </section>
+    ))}
+  </div>
+</Base>

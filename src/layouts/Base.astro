@@ -1,0 +1,144 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Search from '../components/Search.astro';
+import { SITE } from '../lib/site';
+import { i18n, LANG_META, LOCALES, l as localise, stripLang } from '../lib/i18n';
+import type { CoverPalette } from '../lib/cover-palette';
+// Preload the Latin subsets so cached fonts are ready before first paint and
+// Latin text doesn't reflow from the fallback font on every navigation.
+import geistLatin from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
+import monoLatin from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  noindex?: boolean;
+  accentPalette?: CoverPalette;
+  /** Header melts into the page while it sits at the very top. */
+  immersive?: boolean;
+  /** Page opens on a dark cover image (header text goes light at the top). */
+  coverHero?: boolean;
+}
+const { lang, t } = i18n(Astro.url);
+const here = stripLang(Astro.url.pathname);
+const { title, description = t('siteDesc'), image, type = 'website', noindex = false, accentPalette, immersive = true, coverHero = false } = Astro.props;
+const fullTitle = title ? `${title} · ${SITE.title}` : `${SITE.title} — ${SITE.author}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = image ? new URL(image, Astro.site).href : undefined;
+---
+<!doctype html>
+<html lang={LANG_META[lang].html} data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="preload" href={geistLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={monoLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="alternate" type="application/rss+xml" title={SITE.title} href="/index.xml" />
+    {!noindex && LOCALES.map((code) => <link rel="alternate" hreflang={LANG_META[code].html} href={new URL(localise(code, here), Astro.site)} />)}
+    {!noindex && <link rel="alternate" hreflang="x-default" href={new URL(here, Astro.site)} />}
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    {coverHero ? (
+      /* the page opens on the dark cover: tint the phone's status bar to match */
+      <meta name="theme-color" content="#0b0b0b" />
+    ) : (
+      <>
+        <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#ebe7df" media="(prefers-color-scheme: light)" />
+      </>
+    )}
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={SITE.title} />
+    <meta property="og:title" content={title ?? SITE.title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    <meta name="generator" content={Astro.generator} />
+    <script is:inline>
+      (() => {
+        let t;
+        try { t = localStorage.getItem('theme'); } catch {}
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        const root = document.documentElement;
+        root.dataset.theme = t;
+        root.classList.add('js');
+        // Images that fade in are hidden until fully downloaded, so a slow
+        // connection never paints them strip by strip. Registered before any
+        // <img> is parsed, so no load is missed (cached images fire too).
+        const loaded = (e) => {
+          const img = e.target;
+          if (img.tagName !== 'IMG') return;
+          img.dataset.loaded = '';
+          img.closest('.hero-media')?.classList.add('is-ready');
+        };
+        document.addEventListener('load', loaded, true);
+        document.addEventListener('error', loaded, true);
+        // Scroll-in content stays hidden until motion.ts runs, instead of
+        // painting, vanishing and fading back in when the script arrives late.
+        // Module scripts all run before DOMContentLoaded, so if motion.ts never
+        // claimed the page by then, show everything.
+        if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          root.classList.add('enter-pending');
+          document.addEventListener('DOMContentLoaded', () => {
+            if (!root.dataset.motion) root.classList.remove('enter-pending');
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body class:list={['flex min-h-dvh flex-col', { 'is-immersive': immersive, 'has-cover-hero': coverHero }]}>
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-box focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">{t('skip')}</a>
+    <div class="dot-field" aria-hidden="true"></div>
+    <Header />
+    <main
+      id="main"
+      class:list={['flex-1', { 'article-palette': accentPalette }]}
+      data-palette={accentPalette?.name}
+      style={accentPalette ? {
+        '--cover-accent-light': accentPalette.light,
+        '--cover-accent-dark': accentPalette.dark,
+      } : undefined}
+    >
+      <slot />
+    </main>
+    <Footer />
+    <Search />
+    <button type="button" id="back-to-top" class="back-to-top" aria-label={t('backToTop')} title={t('backToTop')} tabindex="-1">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true"><path d="M6 4h12M12 20V9M7 13l5-5 5 5" /></svg>
+    </button>
+    <script>
+      // Global back-to-top (the site's only one): hidden near the top of the
+      // page, appears once the reader is most of a screen down.
+      const btn = document.getElementById('back-to-top')!;
+      const sentinel = document.createElement('div');
+      sentinel.setAttribute('aria-hidden', 'true');
+      sentinel.style.cssText = 'position:absolute;top:0;left:0;width:1px;height:80vh;pointer-events:none';
+      document.body.prepend(sentinel);
+      let nearTop = true;
+      const sync = () => {
+        const show = !nearTop;
+        btn.classList.toggle('is-visible', show);
+        btn.tabIndex = show ? 0 : -1;
+      };
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(([e]) => { nearTop = e.isIntersecting; sync(); }).observe(sentinel);
+      }
+      btn.addEventListener('click', () => scrollTo({ top: 0 }));
+    </script>
+    <script>
+      import '../scripts/motion';
+      import '../scripts/dot-field';
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+---
+import Base from '../../layouts/Base.astro';
+import PageHead from '../../components/PageHead.astro';
+import TagBrowser from '../../components/TagBrowser.astro';
+import { getListedPosts, tagCounts } from '../../lib/posts';
+const tags = tagCounts(await getListedPosts());
+import { i18n } from '../../lib/i18n';
+const { t } = i18n(Astro.url);
+---
+<Base title={t('tagsTitle')} description={t('tagsMeta')}>
+  <PageHead cmd="ls ./tags | sort -rn" dot="TAGS" title={t('tagsTitle')} desc={t('tagsDesc', { n: tags.length })} />
+  <TagBrowser />
+</Base>

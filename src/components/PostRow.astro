@@ -1,0 +1,33 @@
+---
+import { Image } from 'astro:assets';
+import { coverOf, fmtDate, plainSummary, postUrl, tagSlug, type Post } from '../lib/posts';
+import { getLang } from '../lib/i18n';
+const lang = getLang(Astro.url);
+interface Props { post: Post; showYear?: boolean }
+const { post, showYear = true } = Astro.props;
+const cover = coverOf(post);
+const date = fmtDate(post.data.date);
+---
+<li data-enter data-tags={post.data.tags.map(tagSlug).join(' ')}>
+  <a href={postUrl(post, lang)} class="post-row group grid grid-cols-[4.75rem_1fr] items-start gap-x-5 rounded-box px-3 py-5 transition-colors hover:bg-elev sm:grid-cols-[5.5rem_1fr_12rem] sm:px-4">
+    <time datetime={post.data.date.toISOString()} class="term-sm pt-1 tabular-nums">
+      {showYear ? date : date.slice(5)}
+    </time>
+    <div class="min-w-0">
+      <h3 class="text-(length:--fs-md) font-semibold text-fg transition-colors group-hover:text-accent">{post.data.title}</h3>
+      <p class="mt-1.5 line-clamp-2 text-(length:--fs-sm) leading-relaxed text-muted">
+        {post.data.subtitle ? <span class="text-soft">{post.data.subtitle} · </span> : null}{plainSummary(post, 90)}
+      </p>
+      {post.data.tags.length > 0 && (
+        <p class="term-sm mt-2.5 flex flex-wrap gap-x-3 !text-faint">
+          {post.data.tags.map((t) => <span>#{t}</span>)}
+        </p>
+      )}
+    </div>
+    {cover ? (
+      <div class="hidden self-start overflow-hidden rounded-box border border-line sm:block">
+        <Image src={cover} alt="" widths={[384, 576]} sizes="192px" quality={90} class="block h-auto w-full" />
+      </div>
+    ) : <div class="hidden sm:block" />}
+  </a>
+</li>

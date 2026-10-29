@@ -1,12 +1,17 @@
-Personal Collection — Bai Jiawei
-New site implementation: Copyright 2026 Bai Jiawei. Licensed under Apache-2.0.
+Hyper Blog and Gallery
 
-This repository previously contained Hux Blog:
-Copyright (c) 2015-present Huxpro; Apache License 2.0.
-https://github.com/Huxpro/huxpro.github.io
-Hux Blog was derived from Clean Blog Jekyll Theme (MIT):
-Copyright (c) 2013-2016 Blackrock Digital LLC.
+Adapted from the source repositories supplied by the owner:
+- Hyper-jiawei/hypers-blog, source tree 0e398c5f029cd461db7567cb11c9f92106cbdbdc
+- Hyper-jiawei/hypers-gallery, source tree 496745afb6214eb841277e9f8e42a10e2f1e552e
+Original site author: Nit / Nit Sans (https://github.com/i3nit).
+Original Astro components, styling, animations, font pipeline and interactions retained.
+Changes: Hyper identity/content, /gallery/ base-path support, shared Pages deployment,
+new maintenance instructions, and content-independent regression fixtures.
+No original private posts, photographs, personal avatar or social accounts published.
+The supplied blog's MIT license is retained in LICENSE.
+Bitcount font license is retained in src/assets/fonts/OFL-Bitcount.txt;
+gallery font license is retained in gallery/site/src/assets/licenses/OFL-Bitcount.txt.
+Fontsource dependencies retain their distributed licenses.
 
-Visual reference: https://gallery.3nit.icu/ (Nit / https://github.com/i3nit).
-The new site is independently implemented. No reference photography, font files,
-wordmark, or licensed source repository was incorporated.
+Earlier repository versions used Hux Blog (Huxpro, Apache-2.0) and an independently
+implemented static collection. They remain recoverable in Git history.

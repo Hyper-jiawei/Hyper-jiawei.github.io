@@ -1,32 +1,20 @@
-# 你好，我是白佳伟 · Bai Jiawei
+# Hyper · Hyper'jiawei
 
 > 由此观之、生命何等壮丽恢宏！
 
-上海 · 青浦 ｜ Northwest A&F University
+代码、实践，与生活记录。
 
-这里收录我的公开项目，也为照片与日常记录留一处空间。
-
-[个人网站 ↗](https://hyper-jiawei.github.io/) · [全部项目 ↗](https://github.com/Hyper-jiawei?tab=repositories)
+[Blog](https://hyper-jiawei.github.io/) · [Gallery](https://hyper-jiawei.github.io/gallery/) · [GitHub](https://github.com/Hyper-jiawei)
 
 ## 在做与探索
 
-- 计算机视觉与手势交互
-- 嵌入式开发与电机控制
-- 自动化工具与离线归档
+计算机视觉、嵌入式开发、自动化工具。
 
-## 公开项目
+- [手势隔空操作](https://github.com/Hyper-jiawei/YTO-Innovation-Gesture-Control)
+- [微信聊天离线归档](https://github.com/Hyper-jiawei/WechatBuckup)
+- [ESP32 无刷电机云台](https://github.com/Hyper-jiawei/FOC-gimbal-esp32-arduinoIDE)
+- [网页操作工具](https://github.com/Hyper-jiawei/webpage-operator)
 
-| 项目 | 简介 |
-| --- | --- |
-| [手势隔空操作](https://github.com/Hyper-jiawei/YTO-Innovation-Gesture-Control) | AI 手势交互、扫码与拍照取证 |
-| [微信聊天离线归档](https://github.com/Hyper-jiawei/WechatBuckup) | macOS 上的 iOS 微信聊天导出与 HTML 档案 |
-| [ESP32 无刷电机云台](https://github.com/Hyper-jiawei/FOC-gimbal-esp32-arduinoIDE) | 水平保持与目标角度控制 |
-| [网页操作工具](https://github.com/Hyper-jiawei/webpage-operator) | Playwright 驱动 Chrome，读取网页与结构化输出 |
+[网站维护、文章更新与照片上传](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/MAINTENANCE.md)
 
-## 影像与随记
-
-留一些空白，慢慢装进生活。
-
----
-
-[网站维护、信息更新与文件上传说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/MAINTENANCE.md) · [网站源码](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io)
+网站沿用提供的 Blog / Gallery Astro 框架，来源及改动范围见 [NOTICE](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/NOTICE)。

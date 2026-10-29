@@ -1,0 +1,21 @@
+---
+import { Image } from 'astro:assets';
+import Icon from './Icon.astro';
+import { coverOf, fmtDate, plainSummary, postUrl, readingMinutes, wordCount, type Post } from '../lib/posts';
+interface Props { post: Post }
+const { post } = Astro.props;
+const cover = coverOf(post);
+const words = wordCount(post.body);
+import { i18n } from '../lib/i18n';
+const { lang, t } = i18n(Astro.url);
+---
+<a href={postUrl(post, lang)} class="featured-post group" data-enter>
+  <div class="featured-image">{cover && <Image src={cover} alt="" widths={[640,960,1280,1600,2000]} sizes="(min-width: 1760px) 880px, (min-width: 768px) 52vw, 92vw" quality={90} loading="eager" class="size-full object-cover" />}<span class="image-label">{t('newEntry')}</span></div>
+  <div class="featured-copy">
+    <p class="term-sm">{fmtDate(post.data.date)} <span class="text-accent">/</span> {t('minRead', { n: readingMinutes(words) })}</p>
+    <h3>{post.data.title}</h3>
+    {post.data.subtitle && <p class="featured-subtitle">{post.data.subtitle}</p>}
+    <p class="featured-summary">{plainSummary(post,160)}</p>
+    <div class="featured-bottom"><span>{t('readThis')}</span><span class="round-arrow"><Icon name="arrow" class="size-5" /></span></div>
+  </div>
+</a>

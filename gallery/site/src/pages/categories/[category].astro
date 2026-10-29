@@ -1,0 +1,12 @@
+---
+import Category from "../../views/Category.astro";
+import { categories } from "../../lib/gallery";
+
+export function getStaticPaths() {
+  return categories().map((c) => ({ params: { category: c.name.toLowerCase() }, props: { category: c } }));
+}
+
+const { category } = Astro.props;
+---
+
+<Category category={category} />

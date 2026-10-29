@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://hyper-jiawei.github.io/sitemap.xml

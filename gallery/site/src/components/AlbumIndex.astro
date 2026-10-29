@@ -1,0 +1,112 @@
+---
+import AlbumCard from "./AlbumCard.astro";
+import { type Album, year } from "../lib/gallery";
+import { defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  albums: Album[];
+  lang?: Lang;
+}
+
+const { albums, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const groups = new Map<string, Album[]>();
+for (const a of albums) groups.set(year(a), [...(groups.get(year(a)) ?? []), a]);
+---
+
+<div class="index">
+  {
+    [...groups.entries()].map(([y, list]) => (
+      <section class="year" data-year-group>
+        <header class="year-head">
+          <h2 class="year-label">{y}</h2>
+          <span class="year-count num">
+            <span data-year-count>{list.length}</span> {tr.home.albumsUnit}
+          </span>
+        </header>
+        <div class="waterfall" data-waterfall>
+          {list.map((album) => (
+            <AlbumCard album={album} lang={lang} />
+          ))}
+        </div>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .index {
+    display: grid;
+    gap: clamp(56px, 7vw, 112px);
+  }
+  .year {
+    display: grid;
+    grid-template-columns: clamp(88px, 9vw, 150px) minmax(0, 1fr);
+    gap: clamp(28px, 4.5vw, 80px);
+    align-items: start;
+  }
+  .year-head {
+    position: sticky;
+    top: calc(var(--header-h) + 24px);
+    display: grid;
+    gap: 6px;
+    padding-top: 2px;
+    border-top: 3px solid var(--fg);
+  }
+  .year-label {
+    padding-top: 10px;
+    font: 800 clamp(36px, 3.8vw, 64px) / 0.9 var(--font-cn);
+    letter-spacing: -0.03em;
+  }
+  /* "12 ALBUMS", the same 12px as the other small English labels. */
+  .year-count {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  /* Dense waterfall: covers keep their own shape. The inline page script deals each
+     card into the currently shortest column, working from the stored aspect ratios
+     (no measuring), so the browser lays out plain columns instead of balancing a
+     multi-column flow. Without scripts the CSS columns below are the fallback. */
+  .waterfall {
+    --row-gap: 26px;
+    /* Read by the script: column count and width rules, and a caption-height estimate. */
+    --col-min: 220px;
+    --col-max: 5;
+    --cap-h: 80px;
+    columns: 5 220px;
+    column-gap: clamp(12px, 1.4vw, 22px);
+  }
+  :global(.js) .waterfall:not(.is-arranged) > :global([data-card]) {
+    display: none;
+  }
+  .waterfall:global(.is-arranged) {
+    display: flex;
+    align-items: flex-start;
+    columns: auto;
+  }
+  .waterfall :global(.wf-col) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  @media (max-width: 760px) {
+    .year {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .year-head {
+      position: static;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .waterfall {
+      --row-gap: 18px;
+      --col-min: 0px;
+      --col-max: 2;
+      --cap-h: 68px;
+      columns: 2;
+      column-gap: 10px;
+    }
+  }
+</style>

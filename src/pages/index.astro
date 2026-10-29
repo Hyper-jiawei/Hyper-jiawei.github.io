@@ -1,0 +1,48 @@
+---
+import Base from '../layouts/Base.astro';
+import FeaturedPost from '../components/FeaturedPost.astro';
+import PostRow from '../components/PostRow.astro';
+import Icon from '../components/Icon.astro';
+import DotMatrix from '../components/DotMatrix.astro';
+import { fmtDate, getListedPosts, tagCounts, tagUrl, wordCount } from '../lib/posts';
+import { i18n } from '../lib/i18n';
+const { lang, t, l } = i18n(Astro.url);
+
+const posts = await getListedPosts();
+const [latest, ...rest] = posts;
+const tags = tagCounts(posts);
+const words = posts.reduce((n, p) => n + wordCount(p.body), 0);
+const since = posts.at(-1)?.data.date.getFullYear() ?? 2026;
+---
+<Base immersive>
+  <section class="wrap home-hero">
+    <div class="hero-main reveal">
+      <p class="term hero-prompt"><span class="prompt">~/</span> whoami</p>
+      <h1 class="led" data-led-replay><DotMatrix text="Hyper's Blog" accent="_" animate font="bitcount" leadingColumns={1} class="h-10 sm:h-14" /></h1>
+      <p class="hero-description" set:html={t('heroIntro', { who: `<a href="${l('/about/')}">@Hyper</a>` })} />
+      <ul class="hero-topics" aria-label={t('topicsLabel')}>{t.list('topics').map((topic) => <li>{topic}</li>)}</ul>
+      <p class="hero-status" aria-label={t('statusLabel')}>
+        <span class="status-dot" aria-hidden="true"></span><span>online</span>
+        <span class="sep">/</span><span><b>{posts.length}</b> posts</span>
+        <span class="sep">/</span><span><b>{(words / 1000).toFixed(1)}k</b> words</span>
+        <span class="sep">/</span><span>since <b>{since}</b></span>
+        {latest && <><span class="sep">/</span><span>updated <b>{fmtDate(latest.data.date)}</b></span></>}
+      </p>
+    </div>
+  </section>
+  <section class="wrap journal-section" id="journal">
+    <div class="editorial-heading" data-enter><div><span class="eyebrow">01 / LATEST ENTRY</span><h2>{t('latestTitle')}<span>Latest.</span></h2></div></div>
+    {latest && <FeaturedPost post={latest} />}
+  </section>
+  <section class="wrap home-journal">
+    <div>
+      <div class="editorial-heading" data-enter><div><span class="eyebrow">02 / THE ARCHIVE</span><h2>{t('archiveTitle')}<span>Journal.</span></h2></div></div>
+      <ul class="divide-y divide-line">{rest.slice(0,8).map((p) => <PostRow post={p} />)}</ul>
+      <a href={l('/posts/')} class="archive-link">{t('fullArchive')} <span>{posts.length} ENTRIES <Icon name="arrow" class="size-4" /></span></a>
+    </div>
+    <aside class="topic-aside">
+      <p class="eyebrow">03 / EXPLORE BY TOPIC</p><h2>{t('exploreTitle')}</h2>
+      <div class="topic-list">{tags.map((tg) => <a href={tagUrl(tg.name, lang)}><span><span class="topic-hash">#</span>{tg.name}</span><span class="term-sm">{String(tg.count).padStart(2,'0')} ↗</span></a>)}</div>
+    </aside>
+  </section>
+</Base>

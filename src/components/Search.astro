@@ -1,0 +1,80 @@
+---
+import { i18n } from '../lib/i18n';
+const { t } = i18n(Astro.url);
+// Command-palette style search backed by Pagefind's static index (built after `astro build`).
+---
+<dialog id="search-dialog" class="m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-bg/70" aria-label={t('search')} data-placeholder={t('searchPlaceholder')} data-empty={t('searchEmpty')}>
+  <div class="mx-auto mt-[10vh] w-[min(42rem,calc(100%-2rem))] rounded-box border border-line-strong bg-elev p-4 shadow-xl" data-search-panel>
+    <div class="mb-3 flex items-center justify-between">
+      <span class="term"><span class="prompt">$</span> grep -ri <span class="text-faint">"…"</span> ./posts</span>
+      <button type="button" data-search-close class="text-(length:--fs-xs) text-muted transition-colors hover:text-fg"><kbd>esc</kbd></button>
+    </div>
+    <div id="search-root" class="max-h-[65vh] overflow-y-auto"></div>
+    <p data-search-loading hidden class="meta py-6 text-center">{t('searchLoading')}</p>
+    <p data-search-fallback hidden class="meta py-6 text-center">
+      {t('searchDev', { cmd: 'npm run build' })}
+    </p>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.getElementById('search-dialog') as HTMLDialogElement;
+  const loading = dialog.querySelector<HTMLElement>('[data-search-loading]')!;
+  let ready: Promise<void> | undefined;
+
+  // Pagefind's UI (~130 KB) is fetched on first use; its stylesheet is awaited
+  // too, so the results never flash unstyled on a slow connection.
+  function load() {
+    return (ready ??= (async () => {
+      try {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = '/pagefind/pagefind-ui.css';
+        const styled = new Promise((resolve) => { css.onload = css.onerror = resolve; });
+        document.head.append(css);
+        // @ts-ignore - generated at build time
+        await Promise.all([import(/* @vite-ignore */ '/pagefind/pagefind-ui.js'), styled]);
+        // @ts-ignore
+        new window.PagefindUI({
+          element: '#search-root',
+          showSubResults: true,
+          showImages: false,
+          resetStyles: false,
+          autofocus: true,
+          translations: { placeholder: dialog.dataset.placeholder, zero_results: dialog.dataset.empty },
+        });
+      } catch {
+        dialog.querySelector<HTMLElement>('[data-search-fallback]')!.hidden = false;
+      }
+    })());
+  }
+
+  // the panel opens at once; a quiet line shows while the UI is still on its way
+  async function open() {
+    dialog.showModal();
+    const pending = load();
+    const slow = setTimeout(() => { loading.hidden = false; }, 150);
+    await pending;
+    clearTimeout(slow);
+    loading.hidden = true;
+    if (dialog.open) dialog.querySelector<HTMLInputElement>('input')?.focus();
+  }
+
+  // start fetching as soon as the reader reaches for the button
+  document.querySelectorAll('[data-search-open]').forEach((b) => {
+    b.addEventListener('pointerenter', load, { once: true });
+    b.addEventListener('focus', load, { once: true });
+  });
+  document.querySelectorAll('[data-search-open]').forEach((b) => b.addEventListener('click', open));
+  dialog.querySelector('[data-search-close]')?.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    if (!(e.target as HTMLElement).closest('[data-search-panel]')) dialog.close();
+  });
+  document.addEventListener('keydown', (e) => {
+    const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable]');
+    if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
+      e.preventDefault();
+      dialog.open ? dialog.close() : open();
+    }
+  });
+</script>

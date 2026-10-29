@@ -1,0 +1,150 @@
+---
+import { ClientRouter } from "astro:transitions";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import BackButton from "../components/BackButton.astro";
+import BackToTop from "../components/BackToTop.astro";
+import { site } from "../site.config";
+import { categoriesPath, homePath, langTag, localeSwitch, locales, t, defaultLang, type Lang } from "../i18n";
+import "../styles/global.css";
+// Ship viewer geometry with the page, before any click can initialize PhotoSwipe.
+import "photoswipe/style.css";
+import "../styles/lightbox.css";
+import earlyPage from "../lib/early-page.js?raw";
+import eggArrival from "../lib/egg-arrival.js?raw";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  noindex?: boolean;
+  /** Page starts with a full-bleed image: the header floats over it in light text. */
+  hero?: boolean;
+  /** Page colour drawn from the photograph, one value per theme. */
+  tone?: { light: string; dark: string };
+  preloadImage?: { src: string; srcset: string; sizes: string };
+  /** The language this page is written in. */
+  lang?: Lang;
+  /** Announce the same page in the other languages (off for pages that have no siblings). */
+  alternates?: boolean;
+}
+
+const { title, description, image, noindex = false, hero = false, tone, preloadImage, lang = defaultLang, alternates = true } = Astro.props;
+const tr = t(lang);
+const fullTitle = title ? `${title} · ${site.title}` : site.title;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const path = decodeURI(Astro.url.pathname).replace(/^\/gallery(?=\/|$)/, "") || "/";
+// The page without its language prefix, so the rules below read the same in every language.
+const bare = path.startsWith(`/${lang}/`) && lang !== defaultLang ? path.slice(lang.length + 1) : path;
+// Where "back" goes when there is no earlier page on this site to return to.
+const backFallback = bare === "/" ? null : /^\/categories\//.test(bare) ? categoriesPath(lang) : homePath(lang);
+const ogImage = image ? new URL(image, Astro.site).href : undefined;
+const ogLocale: Record<Lang, string> = { zh: "zh_CN", en: "en_US", ja: "ja_JP" };
+---
+
+<!doctype html>
+<html
+  lang={langTag[lang]}
+  data-tone={tone ? "" : undefined}
+  style={tone ? `--tone-light:${tone.light};--tone-dark:${tone.dark}` : undefined}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description ?? tr.meta.description} />
+    {preloadImage && <link rel="preload" as="image" href={preloadImage.src} imagesrcset={preloadImage.srcset} imagesizes={preloadImage.sizes} fetchpriority="high" />}
+    <link rel="canonical" href={canonical} />
+    {/* Each language says where the others are, so a search engine serves the right one. */}
+    {alternates && locales.map((l) => <link rel="alternate" hreflang={langTag[l]} href={new URL(localeSwitch(Astro.url.pathname, l), Astro.site).href} />)}
+    {alternates && <link rel="alternate" hreflang="x-default" href={new URL(localeSwitch(Astro.url.pathname, defaultLang), Astro.site).href} />}
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="icon" href="/gallery/images/favicon.png?v=n-tick-4" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/gallery/images/favicon.svg?v=n-tick-4" type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href="/gallery/images/apple-touch-icon.png?v=n-tick-4" sizes="180x180" />
+    <link rel="alternate" type="application/rss+xml" title={site.title} href="/gallery/index.xml" />
+    <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ebe7df" media="(prefers-color-scheme: light)" />
+    <meta property="og:site_name" content={site.title} />
+    <meta property="og:title" content={title ?? site.title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale[lang]} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    <script is:inline>
+      (function () {
+        var d = document.documentElement;
+        d.classList.add("js");
+        // The router restores history.state when its module first executes. On a
+        // slow connection the visitor can already have scrolled before then.
+        if (document.readyState === "loading") {
+          var syncInitialScroll = function () {
+            var state = history.state;
+            if (!state || typeof state.index !== "number") return;
+            history.replaceState(Object.assign({}, state, {
+              scrollX: window.scrollX,
+              scrollY: window.scrollY,
+            }), "");
+          };
+          var stopInitialScrollSync = function () {
+            window.removeEventListener("scroll", syncInitialScroll);
+            document.removeEventListener("DOMContentLoaded", stopInitialScrollSync);
+            document.removeEventListener("astro:before-preparation", stopInitialScrollSync);
+          };
+          window.addEventListener("scroll", syncInitialScroll, { passive: true });
+          document.addEventListener("DOMContentLoaded", stopInitialScrollSync, { once: true });
+          document.addEventListener("astro:before-preparation", stopInitialScrollSync, { once: true });
+        }
+        try {
+          var t = localStorage.getItem("theme");
+          if (t === "light" || t === "dark") d.dataset.theme = t;
+        } catch (e) {}
+        // Arriving in the hidden gallery from five taps on the wordmark: hold the page blank
+        // from the very first paint, so the celebration has the screen to itself. The safety
+        // timer reveals it if the inline celebration cannot run.
+        try {
+          if (/^\/gallery\/(en|ja)?\/?egg\/$/.test(location.pathname) && sessionStorage.getItem("egg-arrival") === "1") {
+            sessionStorage.removeItem("egg-arrival");
+            d.classList.add("is-celebrating");
+            setTimeout(function () { d.classList.remove("is-celebrating"); }, 6000);
+          }
+        } catch (e) {}
+        document.addEventListener("astro:before-swap", function (e) {
+          e.newDocument.documentElement.classList.add("js");
+          if (d.dataset.theme) e.newDocument.documentElement.dataset.theme = d.dataset.theme;
+        });
+      })();
+    </script>
+    <ClientRouter fallback="swap" />
+  </head>
+  <body class:list={{ "has-hero": hero }}>
+    {bare === "/egg/" && <script is:inline set:html={eggArrival} />}
+    <Header back={backFallback} lang={lang} />
+    {backFallback && <BackButton fallback={backFallback} lang={lang} />}
+    <main id="main">
+      <slot />
+      {/* Every page that scrolls gets the back-to-top button (it stays hidden near the top). */}
+      <BackToTop lang={lang} />
+    </main>
+    <script is:inline set:html={earlyPage} />
+    <Footer lang={lang} />
+    <script>
+      import { initPage } from "../lib/client";
+      // The initial Astro page-load event waits for window.load (including images).
+      // Start interactions as soon as HTML is ready; page swaps get a new main node.
+      let initializedMain: HTMLElement | null = null;
+      const init = () => {
+        const main = document.querySelector("main");
+        if (!main || main === initializedMain) return;
+        initializedMain = main;
+        initPage();
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init, { once: true });
+      } else init();
+      document.addEventListener("astro:page-load", init);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+---
+import { Image } from 'astro:assets';
+import Icon from './Icon.astro';
+import DotMatrix from './DotMatrix.astro';
+import GalleryWordmark from './GalleryWordmark.astro';
+import avatar from '../assets/avatar.png';
+import { GALLERY, NAV, SITE, SOCIALS } from '../lib/site';
+import { i18n, LANG_META, LOCALES, l as localise, stripLang } from '../lib/i18n';
+const { lang, t, l } = i18n(Astro.url);
+// the 404 page exists once; its language links lead to each home page
+const here = stripLang(Astro.url.pathname).replace(/^\/404\/?$/, '/');
+
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap">
+    <a href={l('/')} class="led footer-colophon" aria-label={t('toHomeAria')}><DotMatrix text="Hyper's Blog" accent="_" font="bitcount" leadingColumns={1} class="h-7 sm:h-9" /></a>
+    <div class="footer-grid" data-enter>
+      <section class="footer-author" aria-label={t('footerAuthor')}>
+        <a href={l('/about/')} class="footer-person" aria-label={t('footerAbout', { name: SITE.author })}>
+          <Image src={avatar} alt="" width={52} height={52} loading="lazy" />
+          <div><p class="footer-name">{SITE.author}</p><p class="term-sm">@{SITE.handle} / maker & observer</p></div>
+        </a>
+        <p class="footer-bio">{t('footerBio')}</p>
+      </section>
+      <nav class="footer-column" aria-label={t('footerNav')}>
+        <h2 class="footer-label">{t('explore')}</h2>
+        <ul>
+          {NAV.map((n) => <li><a href={l(n.href)} class="footer-link">{t(n.slug as 'posts')}</a></li>)}
+        </ul>
+      </nav>
+      <div class="footer-column">
+        <h2 class="footer-label">{t('elsewhere')}</h2>
+        <a href={GALLERY.href} target="_blank" rel="noopener" class="nav-gallery footer-gallery" aria-label={t('gallery')} title={t('galleryTitle')}>
+          <GalleryWordmark class="gallery-wordmark" /><span class="gallery-external" aria-hidden="true">↗</span>
+        </a>
+        <ul class="footer-socials">
+          {SOCIALS.map((s) => <li><a href={s.href} class="footer-link" target={s.id === 'email' ? undefined : '_blank'} rel="noopener me"><Icon name={s.id} /><span>{s.label}</span></a></li>)}
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025–{year} {SITE.author}</p>
+      <nav class="langs" aria-label={t('language')}>
+        {LOCALES.map((code) => (
+          <a href={localise(code, here)} hreflang={LANG_META[code].html} lang={LANG_META[code].html} class:list={['lang', { 'is-current': code === lang }]} aria-current={code === lang ? 'page' : undefined}>{LANG_META[code].label}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+</footer>

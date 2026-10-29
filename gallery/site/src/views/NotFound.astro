@@ -1,0 +1,334 @@
+---
+// 404: a roll of 135 that was never exposed and then got soaked. Laid out flat on the light
+// table and cut into six strips — blank base, sprockets top and bottom — it reads as kelp.
+import Base from "../layouts/Base.astro";
+import { defaultLang, homePath, t, type Lang } from "../i18n";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const home = homePath(lang);
+// Six strips off the same roll: each was cut to its own length and dropped down a little
+// out of line, the way a hand-cut roll lands on the table.
+const strips = [
+  { len: 94, inset: 0, tilt: -0.5, shift: 0, op: 0.92 },
+  { len: 88, inset: 4, tilt: 0.35, shift: -6, op: 0.78 },
+  { len: 97, inset: 1.5, tilt: -0.2, shift: 3, op: 1 },
+  { len: 84, inset: 7, tilt: 0.6, shift: -3, op: 0.7 },
+  { len: 92, inset: 2.5, tilt: -0.4, shift: 5, op: 0.86 },
+  { len: 89, inset: 5, tilt: 0.25, shift: -2, op: 0.74 },
+];
+---
+
+<Base title={tr.notFound.title} noindex alternates={false} lang={lang}>
+  <section class="lost wrap">
+    <div class="frame">
+      <p class="ghost" aria-hidden="true">404</p>
+
+      <div class="sheet" aria-hidden="true">
+        <p class="roll-label label">ROLL · 0000</p>
+        <div class="strips">
+          {
+            strips.map((s) => (
+              <span
+                class="strip"
+                style={`--len:${s.len}%;--inset:${s.inset}%;--tilt:${s.tilt}deg;--shift:${s.shift}px;--op:${s.op}`}
+              />
+            ))
+          }
+        </div>
+        <p class="exp-label label">135 · 36 EXP</p>
+      </div>
+    </div>
+
+    <div class="copy">
+      <p class="label eyebrow">Error · 404</p>
+      <h1 class="cn-title">{tr.notFound.heading}</h1>
+
+      <p class="err">{tr.notFound.body}</p>
+
+      <dl class="exif">
+        <div><dt class="label">Roll</dt><dd class="num">—</dd></div>
+        <div><dt class="label">Speed</dt><dd class="num">—</dd></div>
+        <div><dt class="label">Exposures</dt><dd class="num">0</dd></div>
+        <div><dt class="label">Condition</dt><dd class="num">Blank Roll</dd></div>
+      </dl>
+
+      <nav class="ways">
+        <a class="btn" href={home}>{tr.notFound.home}</a>
+      </nav>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Now and then one strip of the roll loses its picture: a black frame, at random, and
+  // sometimes it travels to a neighbour before the light comes back.
+  const strips = [...document.querySelectorAll<HTMLElement>(".strip")];
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  if (strips.length && !calm.matches) {
+    const pick = () => strips[Math.floor(Math.random() * strips.length)];
+    // A dropped frame is one short black pulse — sometimes two, never a fade: 40–70 ms on,
+    // then, at random, once more.
+    const pulse = (strip: HTMLElement) => {
+      strip.classList.add("is-flash");
+      window.setTimeout(() => strip.classList.remove("is-flash"), 40 + Math.random() * 30);
+    };
+    const black = (strip: HTMLElement) => {
+      pulse(strip);
+      // The second pulse follows almost at once: it reads as one blink.
+      if (Math.random() < 0.5) window.setTimeout(() => pulse(strip), 52 + Math.random() * 26);
+    };
+    const tick = () => {
+      black(pick());
+      if (Math.random() < 0.3) window.setTimeout(() => black(pick()), 190);
+      window.setTimeout(tick, 1300 + Math.random() * 2600);
+    };
+    window.setTimeout(tick, 900);
+  }
+</script>
+
+<style>
+  .lost {
+    display: grid;
+    /* The pair stays a pair: on a wide screen the page keeps to a comfortable measure
+       instead of stretching the picture and the text to opposite ends. */
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: center;
+    gap: clamp(32px, 4.5vw, 88px);
+    max-width: 1240px;
+    margin-inline: auto;
+    min-height: 100svh;
+    padding-top: calc(var(--header-h) + clamp(40px, 7vh, 96px));
+    padding-bottom: clamp(56px, 8vh, 120px);
+  }
+
+  /* ---------- The light table ---------- */
+  .frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    height: clamp(460px, 62svh, 520px);
+    max-width: 100%;
+    overflow: hidden;
+    background: none;
+  }
+  /* The numeral, printed on the glass under the film. */
+  .ghost {
+    position: absolute;
+    margin: 0;
+    font: 800 clamp(88px, 15vw, 220px) / 0.82 var(--font-cn);
+    letter-spacing: 0.01em;
+    color: var(--fg);
+    opacity: 0.1;
+    z-index: 0;
+    user-select: none;
+  }
+
+  /* ---------- Six strips of 135 ---------- */
+  /* Everything is measured off the film's own width: 35 mm across, 24 mm of image, 36 mm a
+     frame, perforations on both long edges. */
+  .sheet {
+    position: absolute;
+    inset: 8% 4%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(8px, 1.2vw, 14px);
+    --strip-h: clamp(30px, 3.4vw, 46px);
+    --frame-w: calc(var(--strip-h) * 1.086);
+    --frame-h: calc(var(--strip-h) * 0.686);
+    --perf-w: calc(var(--strip-h) * 0.09);
+    --perf-h: calc(var(--strip-h) * 0.062);
+    --perf-pitch: calc(var(--strip-h) * 0.1357);
+    --perf-y: calc(var(--strip-h) * 0.055);
+    /* Holes are cut right through: on the lit table they are the brightest thing there. */
+    --hole: color-mix(in srgb, #fff 86%, var(--bg));
+  }
+  :global(:root[data-theme="dark"]) .sheet {
+    --hole: var(--bg);
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .sheet {
+      --hole: var(--bg);
+    }
+  }
+  .strips {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(5px, 0.9vw, 11px);
+  }
+  .roll-label,
+  .exp-label {
+    margin: 0;
+    font-size: 10px;
+    color: var(--fg-faint);
+  }
+  .roll-label {
+    align-self: flex-start;
+  }
+  .exp-label {
+    align-self: flex-end;
+  }
+  .strip {
+    position: relative;
+    display: block;
+    height: var(--strip-h);
+    width: var(--len);
+    margin-left: var(--inset);
+    opacity: var(--op);
+    transform: rotate(var(--tilt)) translateX(var(--shift));
+    /* The base: a tint of ink on paper, cream on dark. */
+    background-color: color-mix(in srgb, var(--fg) 30%, transparent);
+    background-image:
+      /* perforations along the top edge */
+      repeating-linear-gradient(90deg, var(--hole) 0 var(--perf-w), transparent var(--perf-w) var(--perf-pitch)),
+      /* and along the bottom edge */
+      repeating-linear-gradient(90deg, var(--hole) 0 var(--perf-w), transparent var(--perf-w) var(--perf-pitch)),
+      /* the frame divisions of a roll with nothing on it */
+      repeating-linear-gradient(90deg, transparent 0 calc(var(--frame-w) - 1px), color-mix(in srgb, var(--fg) 30%, transparent) calc(var(--frame-w) - 1px) var(--frame-w));
+    background-size:
+      100% var(--perf-h),
+      100% var(--perf-h),
+      100% var(--frame-h);
+    background-position:
+      0 0,
+      0 100%,
+      0 50%;
+    background-repeat: no-repeat;
+    /* The perforation rows are inset by the film's own margin: origin on the content box,
+       with that margin as padding. */
+    box-sizing: border-box;
+    padding: var(--perf-y) 0;
+    background-origin: content-box;
+    /* A cut end, not a torn one: slightly out of square. */
+    clip-path: polygon(0 2%, 100% 0, 100% 98%, 0 100%);
+  }
+  /* A strip that has just gone black. */
+
+  /* ---------- The plaque ---------- */
+  .copy {
+    display: grid;
+    gap: 14px;
+    justify-items: start;
+    align-content: center;
+    max-width: 430px;
+  }
+  .eyebrow {
+    margin: 0;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 3vw, 46px);
+    letter-spacing: 0.06em;
+    /* Never leave a single character dangling on a line of its own. */
+    text-wrap: balance;
+  }
+  /* Latin words and Japanese sentences are longer than the Chinese original: a size down
+     keeps each of them on one line in the plaque's column. */
+  :global(:root[lang="en"]) h1,
+  :global(:root[lang="ja"]) h1 {
+    font-size: clamp(24px, 2.4vw, 36px);
+  }
+  /* What went wrong, and nothing else. */
+  .err {
+    margin: 0;
+    font: 300 13px/1.75 var(--font-sans);
+    color: var(--fg-muted);
+  }
+  .exif {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+    width: 100%;
+    margin: 10px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .exif div {
+    display: grid;
+    gap: 2px;
+  }
+  .exif dt {
+    font-size: 9.5px;
+    color: var(--fg-faint);
+  }
+  .exif dd {
+    margin: 0;
+    font-size: 13px;
+    color: var(--fg-muted);
+  }
+  .ways {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 18px;
+    border: 1px solid var(--line);
+    font: 300 12.5px/1 var(--font-sans);
+    letter-spacing: 0.2em;
+    color: var(--fg);
+    transition:
+      background-color 0.3s,
+      border-color 0.3s,
+      color 0.3s;
+  }
+  .btn:hover {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+
+  /* ---------- Picking a strip ---------- */
+  /* The strip under the pointer darkens a step, the way a frame does when the light is
+     held back from it. Nothing moves. */
+  .strip {
+    transition: filter 0.25s linear;
+  }
+  .strip:hover {
+    filter: brightness(0.84);
+  }
+
+  /* Only the light goes out: the same tint, dimmed — in both themes. Declared after the
+     hover rule so a strip that flashes stays black under the pointer. */
+  .strip.is-flash {
+    filter: brightness(0.56);
+    transition: none;
+  }
+
+  @media (max-width: 900px) {
+    .lost {
+      grid-template-columns: minmax(0, 1fr);
+      align-content: start;
+      padding-top: calc(var(--header-h) + clamp(24px, 5vh, 56px));
+    }
+    .frame {
+      order: -1;
+      aspect-ratio: 5 / 4;
+      height: auto;
+    }
+    .sheet {
+      --strip-h: clamp(22px, 6.4vw, 34px);
+    }
+    .copy {
+      max-width: 100%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .strip {
+      transition: none;
+    }
+  }
+</style>

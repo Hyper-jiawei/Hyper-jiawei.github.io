@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" fill="none">
+  <title>Hyper's Gallery</title>
+  <style>
+    .paper { fill: #ebe7df; }
+    .letter { color: #1c1a16; fill: currentColor; stroke: currentColor; stroke-width: 16; stroke-linejoin: miter; }
+    .tick { fill: #a2361f; }
+
+  </style>
+  <rect class="paper" width="1000" height="1000"/>
+  <path class="letter" transform="translate(68 835) scale(.92)" d="M336.5 -45L407.5 -20L407.5 0L25 0L25 -20L95.5 -45L95.5 -660L25 -685L25 -705L407.5 -705L407.5 -685L336.5 -660ZM814.5 -45L885 -20L885 0L502.5 0L502.5 -20L573.5 -45L573.5 -660L502.5 -685L502.5 -705L885 -705L885 -685L814.5 -660ZM210 -338L210 -391.5L699 -391.5L699 -338Z"/>
+  <path class="tick" transform="translate(-2434.8 802.55) scale(1.02)" d="M3143 -428Q3200.5 -451 3221.8 -475.2Q3243 -499.5 3243 -528Q3243 -550.5 3229.3 -565.5Q3215.5 -580.5 3197.5 -590.2Q3179.5 -600 3165.8 -606.5Q3152 -613 3152 -618Q3152 -659.5 3180 -688.2Q3208 -717 3253 -717Q3298.5 -717 3327.3 -688.7Q3356 -660.5 3356 -608Q3356 -565 3336.5 -528Q3317 -491 3273.3 -459.5Q3229.5 -428 3155.5 -400.5Z"/>
+</svg>

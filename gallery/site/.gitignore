@@ -1,0 +1,10 @@
+!public/
+node_modules/
+dist/
+.astro/
+.cache/
+public/img/
+src/data/gallery.json
+.DS_Store
+.images.log
+public/_fonttest/

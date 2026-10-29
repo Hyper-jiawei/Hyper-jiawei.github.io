@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import DotMatrix from '../components/DotMatrix.astro';
+import { i18n } from '../lib/i18n';
+const { t, l } = i18n(Astro.url);
+---
+<Base title="404" noindex>
+  <section class="wrap grid min-h-[60vh] place-items-center py-24 text-center">
+    <div class="flex flex-col items-center">
+      <p class="term"><span class="prompt">$</span> cd {Astro.url.pathname}</p>
+      <p class="term-sm mt-2 !text-red-500">bash: cd: no such file or directory</p>
+      <h1 class="led mt-8"><DotMatrix text="404" accent="_" animate class="h-16 sm:h-20" label="404" /></h1>
+      <p class="mt-8 text-(length:--fs-lg) font-semibold text-fg">{t('notFound')}</p>
+      <p class="meta mt-2">{t('notFoundHint')}</p>
+      <a href={l('/')} class="btn btn-primary mt-8 font-mono text-(length:--fs-sm) font-normal">{t('goHome')}</a>
+    </div>
+  </section>
+</Base>

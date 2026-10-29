@@ -1,0 +1,65 @@
+---
+// One photograph in a multi-photo album: the frame, the image and its line of caption. The
+// surrounding layout decides its width — a grid column in the editorial rows, or a fixed
+// physical width in an "actual size" album.
+import { type Album, type Photo, aspect, exifLine, largest, pad2, pick, srcsetOf } from "../lib/gallery";
+import { defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  p: Photo;
+  n: number;
+  album: Album;
+  lang?: Lang;
+  /** The sizes attribute for this image at this width. */
+  sizes: string;
+  style?: string;
+  class?: string;
+}
+
+const { p, n, album, lang = defaultLang, sizes, style, class: className } = Astro.props;
+const tr = t(lang);
+const big = p.original ?? largest(p);
+const lightbox = {
+  href: big.url,
+  "data-pswp-width": big.w,
+  "data-pswp-height": big.h,
+  "data-download-name": p.file,
+  "data-title": album.title,
+  "data-exif": JSON.stringify(p.exif ?? {}),
+};
+---
+
+<figure class:list={["work reveal", className]} style={style}>
+  <a
+    class="work-photo"
+    style={`aspect-ratio:${aspect(p).toFixed(4)};background-color:${p.color}`}
+    {...lightbox}
+  >
+    <img
+      class="fade"
+      src={pick(p, 960).url}
+      srcset={srcsetOf(p)}
+      {sizes}
+      width={pick(p, 960).w}
+      height={pick(p, 960).h}
+      alt={`${album.title} ${n}`}
+      loading={n <= 2 ? "eager" : "lazy"}
+      fetchpriority={n === 1 ? "high" : "auto"}
+      decoding="async"
+      onload="this.classList.add('is-loaded')"
+    />
+  </a>
+  <figcaption>
+    <span class="caption-meta">
+      <span class="n num">{pad2(n)}</span>
+      {p.exif && <span class="label">{exifLine(p.exif)}</span>}
+    </span>
+    {album.showPalette === true && p.palette && (
+      <span class="mini-palette" role="img" aria-label={tr.album.miniPaletteAria(p.palette.colors.join("、"))}>
+        {p.palette.colors.map((c) => (
+          <i style={`background-color:${c}`} title={c} />
+        ))}
+      </span>
+    )}
+  </figcaption>
+</figure>

@@ -1,0 +1,198 @@
+---
+import { type Album, albumUrl, coverOf, pick, aspect, numberOf, preloadFor } from "../lib/gallery";
+import { categoryName, defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  album: Album;
+  lang?: Lang;
+}
+
+const { album, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const cover = coverOf(album);
+// Natural shape in the waterfall; only extreme panoramas and verticals are trimmed.
+const ar = Math.min(2, Math.max(0.62, aspect(cover)));
+const v = cover.thumbnail ?? pick(cover, 480);
+const thumbnailSrcset = cover.thumbnails?.map((v) => `${v.url} ${v.w}w`).join(", ");
+const sizes = "(max-width: 760px) 46vw, (max-width: 1100px) 26vw, 15vw";
+const multi = album.layout === "gallery";
+// Multi-photo albums are tagged as a series after their categories; it is a label only, not a
+// category (data-categories, the filters and the category pages leave it out).
+const tags = multi ? [...album.categories.map((c) => categoryName(c, lang)), tr.album.series] : album.categories.map((c) => categoryName(c, lang));
+---
+
+<a class:list={["card reveal", { "is-album": multi }]} href={albumUrl(album, lang)} data-categories={album.categories.join("|")} data-card data-ar={ar.toFixed(4)} data-astro-prefetch="hover" {...preloadFor(album)}>
+  <div class="stack" style={`--tint:${cover.color}`}>
+  <figure style={`background-color:${cover.color};aspect-ratio:${ar.toFixed(4)}`}>
+    <img
+      class="fade"
+      data-deferred-src={v.url}
+      data-deferred-srcset={thumbnailSrcset}
+      sizes={sizes}
+      width={v.w}
+      height={v.h}
+      alt={album.title}
+      loading="lazy"
+      fetchpriority="low"
+      decoding="async"
+      onload="this.classList.add('is-loaded')"
+      data-vt-key={cover.key}
+    />
+    <noscript>
+      <img
+        src={v.url}
+        srcset={thumbnailSrcset}
+        sizes={sizes}
+        width={v.w}
+        height={v.h}
+        alt={album.title}
+        loading="lazy"
+        decoding="async"
+      />
+    </noscript>
+    {multi && <span class="count num" role="img" aria-label={tr.album.photos(album.photos.length)}>{album.photos.length}</span>}
+  </figure>
+  </div>
+  <div class="cap">
+    <h3 class="title">{album.title}</h3>
+    <p class="meta num">
+      <span class="no">°{numberOf(album)}</span>
+      {tags[0] && <span class="cats">{tags.join(" · ")}</span>}
+    </p>
+  </div>
+</a>
+
+<style>
+  .card {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: var(--row-gap, 28px);
+  }
+  figure {
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    /* The frame's size comes from its own aspect ratio, never from the photo inside, so
+       a photo loading in (or fading) only re-lays out this frame instead of the whole
+       waterfall around it. */
+    contain: size layout paint;
+  }
+  /* A hairline frame, the same 1px line as the album's stacked sheets, drawn over the photo. */
+  figure::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 1px var(--line);
+    pointer-events: none;
+    transition: box-shadow 0.8s var(--ease-out);
+  }
+  .card:hover figure::after {
+    box-shadow: inset 0 0 0 3px var(--line);
+  }
+  .card:hover .count {
+    font-weight: 800;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .card:hover img {
+    transform: scale(1.04);
+  }
+  /* Multi-photo albums: two paper sheets, tinted by the cover, peek out behind it. */
+  .stack {
+    position: relative;
+  }
+  .is-album .stack {
+    padding: 10px 10px 0 0;
+  }
+  .is-album .stack::before,
+  .is-album .stack::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    transition: transform 0.6s var(--ease-out);
+  }
+  .is-album .stack::before {
+    inset: 5px 5px 5px 5px;
+    background: color-mix(in srgb, var(--tint) 62%, var(--bg));
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .is-album .stack::after {
+    inset: 0 0 10px 10px;
+    background: color-mix(in srgb, var(--tint) 34%, var(--bg));
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .is-album:hover .stack::before {
+    transform: translate(2px, -2px);
+  }
+  .is-album:hover .stack::after {
+    transform: translate(4px, -4px);
+  }
+  .stack {
+    isolation: isolate;
+  }
+  .count {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    background: rgb(18 17 15 / 0.48);
+    border: 1px solid rgb(255 255 255 / 0.24);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1;
+    pointer-events: none;
+    transition: font-weight 0.8s var(--ease-out);
+  }
+  .cap {
+    padding-top: 10px;
+  }
+  .title {
+    font: 800 16px/1.35 var(--font-cn);
+    letter-spacing: 0.04em;
+    transition: color 0.3s;
+    /* One line; longer titles end in an ellipsis. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card:hover .title {
+    color: var(--accent);
+  }
+  /* Category names are words, not figures: they take the sans, so Latin and Chinese read at
+     the same weight (the Chinese ones were already falling through the mono to the sans). */
+  .cats {
+    font-family: var(--font-sans);
+  }
+  /* Latin needs a touch of tracking at this size; Chinese does not. */
+  :global(:root[lang="en"]) .cats {
+    letter-spacing: 0.02em;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 10px;
+    margin: 3px 0 0;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+  }
+  .no {
+    color: var(--accent);
+    font-weight: 400;
+  }
+  @media (max-width: 640px) {
+    .title {
+      font-size: 14px;
+    }
+    .meta {
+      font-size: 11.5px;
+      gap: 0 6px;
+    }
+  }
+</style>

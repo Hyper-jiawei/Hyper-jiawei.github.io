@@ -1,0 +1,13 @@
+---
+import DotMatrix from './DotMatrix.astro';
+interface Props { title: string; desc?: string; dot?: string; eyebrow?: string; cmd?: string }
+const { title, desc, dot, eyebrow, cmd } = Astro.props;
+---
+<section class="wrap page-heading">
+  {cmd && <p class="term reveal mb-5"><span class="prompt">~/</span> {cmd}</p>}
+  {dot && <DotMatrix text={dot} animate class="h-7 text-fg sm:h-8" label={dot} />}
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+  <h1 class:list={['page-title reveal', dot || eyebrow ? 'mt-4' : '']}>{title}</h1>
+  {desc && <p class="reveal mt-3 max-w-2xl text-muted">{desc}</p>}
+  <slot />
+</section>

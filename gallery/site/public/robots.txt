@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /gallery/
+Sitemap: https://hyper-jiawei.github.io/gallery/sitemap-index.xml

@@ -1,0 +1,16 @@
+---
+// A title set vertically: CJK stays upright, Latin words lie on their side as in
+// Chinese vertical typesetting, and one- or two-digit numbers sit upright side by side.
+interface Props {
+  text: string;
+  class?: string;
+  tag?: "h1" | "h2" | "span";
+}
+const { text, class: className, tag: Tag = "span" } = Astro.props;
+const parts = text.split(/([A-Za-z0-9][A-Za-z0-9 .'’&+-]*[A-Za-z0-9]|[A-Za-z0-9])/g).filter(Boolean);
+const kind = (p: string) => (/^\d{1,2}$/.test(p) ? "tcy" : /^[A-Za-z0-9]/.test(p) ? "latin" : "cjk");
+---
+
+<Tag class:list={["vertical", className]}>
+  {parts.map((p) => (kind(p) === "cjk" ? p : <span class={kind(p)}>{p}</span>))}
+</Tag>

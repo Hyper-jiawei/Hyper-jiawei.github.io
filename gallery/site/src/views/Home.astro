@@ -1,0 +1,456 @@
+---
+import Base from "../layouts/Base.astro";
+import AlbumIndex from "../components/AlbumIndex.astro";
+import { albums, categories, coverOf, srcsetOf, pick, albumUrl, formatDate, photoCount, numberOf, pad2, preloadFor } from "../lib/gallery";
+import { site } from "../site.config";
+import Wordmark from "../components/Wordmark.astro";
+import VTitle from "../components/VTitle.astro";
+import { categoryName, defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = defaultLang } = Astro.props;
+const tr = t(lang);
+
+// Featured albums open the exhibition, followed by the most recent multi-photo albums.
+const heroAlbums = [
+  ...albums.filter((a) => a.featured),
+  ...albums.filter((a) => !a.featured && a.layout === "gallery"),
+].slice(0, 5);
+const cats = categories();
+const [statement] = tr.meta.bio.split(/(?<=\.)\s+/);
+const years = albums.map((a) => a.date?.slice(0, 4)).filter(Boolean).sort();
+const firstCover = coverOf(heroAlbums[0]);
+const heroSizes = "(max-width: 900px) 100vw, 72vw";
+---
+
+<Base lang={lang} image={pick(firstCover, 1600).url} preloadImage={{ src: pick(firstCover, 1600).url, srcset: srcsetOf(firstCover), sizes: heroSizes }}>
+  <section class="opening wrap" data-hero aria-roledescription="carousel" aria-label={tr.home.hero}>
+    <div class="stage">
+      {
+        heroAlbums.map((album, i) => {
+          const cover = coverOf(album);
+          return (
+            <article class:list={["slide", { "is-active": i === 0 }]} style={`--stack-layer: ${i + 1}`} inert={i !== 0} data-slide>
+              <div class="slide-text">
+                <p class="label">
+                  {album.featured ? "Featured" : "Recent"}
+                  {(album.featured ? tr.home.featured : tr.home.recent) !== (album.featured ? "Featured" : "Recent") && (
+                    <> · <span class="label-cn">{album.featured ? tr.home.featured : tr.home.recent}</span></>
+                  )}
+                </p>
+                <h2 class="slide-title">
+                  <a href={albumUrl(album, lang)} data-astro-prefetch="hover" {...preloadFor(album)}><VTitle text={album.title} /></a>
+                </h2>
+                <p class="slide-meta num">
+                  <span>°{numberOf(album)}</span>
+                  <span>{formatDate(album.date, lang, "short")}</span>
+                  <span class="cats">{album.categories.map((c) => categoryName(c, lang)).join(" · ")}</span>
+                </p>
+              </div>
+              <a class="slide-media" href={albumUrl(album, lang)} aria-label={album.title} style={`background-color:${cover.color}`} data-astro-prefetch="hover" data-vt-key={album.layout === "gallery" ? undefined : cover.key} {...preloadFor(album)}>
+                <img
+                  class="fade"
+                  data-deferred-src={pick(cover, 1600).url}
+                  data-deferred-srcset={srcsetOf(cover)}
+                  sizes={heroSizes}
+                  alt=""
+                  loading={i === 0 ? "eager" : "lazy"}
+                  fetchpriority={i === 0 ? "high" : "auto"}
+                  decoding="async"
+                  onload="this.classList.add('is-loaded')"
+                />
+                <noscript>
+                  <img
+                    src={pick(cover, 1600).url}
+                    srcset={srcsetOf(cover)}
+                    sizes={heroSizes}
+                    alt=""
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                </noscript>
+              </a>
+            </article>
+          );
+        })
+      }
+    </div>
+    <div class="counter" role="tablist">
+      {
+        heroAlbums.map((a, i) => (
+          <button type="button" class="num" data-dot aria-current={String(i === 0)} aria-label={a.title}>
+            {pad2(i + 1)}
+          </button>
+        ))
+      }
+      <span class="counter-total num">/ {pad2(heroAlbums.length)}</span>
+    </div>
+  </section>
+
+  <section class="manifesto wrap reveal" id="works">
+    <h1 class="statement"><Wordmark size="var(--statement-size)" /></h1>
+    <p class="aside">{statement}</p>
+    <p class="stats num">
+      <span>{tr.home.albums(albums.length)}</span>
+      <span aria-hidden="true">·</span>
+      <span>{tr.home.frames(photoCount)}</span>
+      <span aria-hidden="true">·</span>
+      <span>{years[0]} — {years[years.length - 1]}</span>
+    </p>
+  </section>
+
+  <nav class="filters wrap" data-filter-bar aria-label={tr.home.filter}>
+    <span class="label filter-label-top" aria-hidden="true">{tr.home.index}</span>
+    <div class="filter-row">
+      <span class="label filter-label">{tr.home.index}</span>
+      <button type="button" data-filter="" aria-pressed="true"><span class="draw">{tr.home.all}</span><sup class="num">{albums.length}</sup></button>
+      {
+        cats.map((c) => (
+          <button type="button" data-filter={c.name} aria-pressed="false">
+            <span class="draw">{categoryName(c.name, lang)}</span>
+            <sup class="num">{c.albums.length}</sup>
+          </button>
+        ))
+      }
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <AlbumIndex albums={albums} lang={lang} />
+  </div>
+</Base>
+
+<style>
+  /* ---------- Opening: one framed photograph with its title hung beside it ---------- */
+  .opening {
+    position: relative;
+    overflow-x: clip;
+    height: 100svh;
+    min-height: 560px;
+    padding-top: calc(var(--header-h) + 3vh);
+    padding-bottom: 9vh;
+  }
+  .stage {
+    position: relative;
+    height: 100%;
+    touch-action: pan-y; /* vertical scrolling stays native; sideways swipes change slides */
+    user-select: none;
+    cursor: grab;
+  }
+  .stage:global(.is-dragging),
+  .stage:global(.is-dragging) a {
+    cursor: grabbing;
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: minmax(150px, 2.2fr) minmax(0, 9fr);
+    gap: clamp(20px, 3vw, 56px);
+    /* Larger numbers stay above smaller ones, including while a layer is moving. */
+    z-index: var(--stack-layer);
+  }
+  .slide-media {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    /* Both sides of the stack retract; only the selected photograph stays open. */
+    clip-path: inset(0 0 0 100%);
+    transition: clip-path 1.4s var(--ease-out);
+  }
+  .slide.is-active .slide-media {
+    clip-path: inset(0 0 0 0);
+  }
+  .slide-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.12);
+    transition:
+      opacity 0.9s var(--ease),
+      transform 8s var(--ease-out),
+      filter 0.8s var(--ease);
+  }
+  .slide.is-active .slide-media img {
+    transform: scale(1);
+  }
+  .slide-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-block: 4px;
+    min-height: 0;
+  }
+  .slide-text > * {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.8s var(--ease),
+      transform 1s var(--ease-out);
+  }
+  .slide.is-active .slide-text > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: 0.35s;
+  }
+  .slide.is-active .slide-text > :nth-child(2) {
+    transition-delay: 0.5s;
+  }
+  .slide.is-active .slide-text > :nth-child(3) {
+    transition-delay: 0.65s;
+  }
+  .slide-title {
+    margin: 0 auto 0 0;
+    font-size: clamp(34px, 3.6vw, 64px);
+  }
+  .slide-title :global(.vertical) {
+    display: block;
+    max-height: 62svh;
+  }
+  .slide-title a {
+    transition: color 0.4s;
+  }
+  .slide-title a:hover {
+    color: var(--accent);
+  }
+  .slide-meta {
+    display: grid;
+    margin: 0;
+    color: var(--fg-muted);
+  }
+  /* The slide's small text — "Featured · 精选" and ° / date / category — share one size,
+     face and spacing, so only the title stands out. */
+  .slide-text > .label,
+  .slide-meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 300;
+    font-stretch: 87.5%;
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+  }
+  /* Category words in the slide's meta line take the sans, like the cards. */
+  .slide-meta .cats {
+    font-family: var(--font-sans);
+  }
+  :global(:root[lang="en"]) .slide-meta .cats {
+    letter-spacing: 0.02em;
+  }
+  /* Chinese in the same line: same size as the mono capitals, only the weight is eased. */
+  .label-cn {
+    font-weight: 400;
+  }
+  .slide-meta span:first-child {
+    color: var(--accent);
+  }
+  .counter {
+    position: absolute;
+    right: var(--gutter);
+    bottom: 3vh;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .counter button {
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--fg-faint);
+    transition: color 0.4s;
+  }
+  .counter button[aria-current="true"],
+  .counter button:hover {
+    color: var(--fg);
+  }
+  .counter button[aria-current="true"] {
+    font: 900 22px/1 var(--font-cn);
+  }
+  .counter-total {
+    font-size: 13px;
+    color: var(--fg-faint);
+  }
+
+  /* ---------- Manifesto ---------- */
+  .manifesto {
+    padding-block: clamp(100px, 16vw, 240px) clamp(64px, 9vw, 140px);
+    text-align: center;
+    display: grid;
+    justify-items: center;
+    gap: 26px;
+  }
+  /* On festive days the mark in the big wordmark hops when clicked. */
+  .statement :global(.wm-mark-hit) {
+    cursor: pointer;
+  }
+  .statement {
+    --statement-size: clamp(40px, 10vw, 168px);
+    margin: 0;
+  }
+  /* One line under the mark, in Playfair Display italic. */
+  .aside {
+    margin: 0;
+    font: italic 400 clamp(21px, 2.3vw, 31px) / 1.4 "Playfair Display Variable", Georgia, serif;
+    letter-spacing: 0.005em;
+    color: var(--fg-muted);
+  }
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+    margin: 8px 0 0;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  /* ---------- Filters: one quiet line between hairlines ---------- */
+  .filters {
+    margin-bottom: clamp(40px, 5vw, 72px);
+  }
+  .filter-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px clamp(20px, 2.6vw, 40px);
+    padding-block: 16px;
+    border-block: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-label-top {
+    display: none;
+  }
+  .filter-label {
+    flex-shrink: 0;
+    margin-right: auto;
+    color: var(--fg-faint);
+  }
+  .filters button {
+    flex-shrink: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font: 300 15px/1.4 var(--font-sans);
+    letter-spacing: 0.12em;
+    color: var(--fg-muted);
+    transition: color 0.35s;
+  }
+  .filters button:hover,
+  .filters button[aria-pressed="true"] {
+    color: var(--fg);
+  }
+  /* Selected category switches from light sans to heavy Song. */
+  .filters button[aria-pressed="true"] {
+    font-family: var(--font-cn);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+  .filters sup {
+    margin-left: 4px;
+    font-size: 9.5px;
+    color: var(--fg-faint);
+  }
+  .filters button[aria-pressed="true"] sup {
+    color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+    .opening {
+      height: auto;
+      min-height: 0;
+      padding-bottom: 72px;
+    }
+    .stage {
+      display: grid;
+    }
+    .slide {
+      position: relative;
+      grid-area: 1 / 1;
+      inset: auto;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto;
+      gap: 20px;
+    }
+    .slide-media {
+      grid-row: 1;
+      aspect-ratio: 4 / 5;
+    }
+    /* Phones: the same arrangement for every slide — the "Featured" label on its own
+       line on top; below it the title at the top left and number / date / category
+       stacked on the right, both hanging from the same top line. */
+    .slide-text {
+      grid-row: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "label label"
+        "title meta";
+      align-items: start;
+      gap: 10px 16px;
+    }
+    .slide-text > .label {
+      grid-area: label;
+    }
+    .slide-title :global(.vertical) {
+      writing-mode: horizontal-tb;
+    }
+    .slide-title {
+      grid-area: title;
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.12em;
+      line-height: 1.2;
+    }
+    .slide-meta {
+      grid-area: meta;
+      display: grid;
+      justify-items: end;
+      text-align: right;
+    }
+    .counter {
+      bottom: 24px;
+    }
+    /* Phones: the row runs edge to edge and scrolls sideways; the INDEX label stays.
+       The gap between options is tuned in client.ts so the last visible option is
+       always cut by the screen edge, hinting that the row scrolls. */
+    .filter-row {
+      margin-inline: calc(-1 * var(--gutter));
+      padding-inline: var(--gutter);
+      gap: 6px var(--filter-gap, 22px);
+    }
+    /* INDEX sits on its own line above the row and does not scroll with it. */
+    .filter-label {
+      display: none;
+    }
+    .filter-label-top {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--fg-faint);
+    }
+    .statement {
+      --statement-size: clamp(40px, 12.5vw, 210px);
+    }
+    /* Under the big mark: a smaller tagline and statistics on phones. */
+    .manifesto {
+      gap: 16px;
+    }
+    .aside {
+      font-size: 17px;
+    }
+    .stats {
+      font-size: 10.5px;
+      gap: 4px 10px;
+      margin-top: 2px;
+    }
+  }
+</style>

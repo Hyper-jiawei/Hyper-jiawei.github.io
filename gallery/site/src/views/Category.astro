@@ -1,0 +1,73 @@
+---
+import Base from "../layouts/Base.astro";
+import AlbumIndex from "../components/AlbumIndex.astro";
+import { categories, categoryUrl, coverOf, pick } from "../lib/gallery";
+import { categoryName, defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  category: ReturnType<typeof categories>[number];
+  lang?: Lang;
+}
+const { category, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const name = categoryName(category.name, lang);
+const others = categories().filter((c) => c.name !== category.name);
+---
+
+<Base
+  lang={lang}
+  title={name}
+  description={tr.category.description(name, category.albums.length)}
+  image={pick(coverOf(category.albums[0]), 1600).url}
+>
+  <section class="head wrap">
+    <h1 class="cn-title">{name}</h1>
+    <p class="meta num">{tr.categories.count(category.albums.length, category.photos)}</p>
+    <nav class="others" aria-label={tr.categories.others}>
+      {
+        others.map((c) => (
+          <a href={categoryUrl(c.name, lang)} class="draw">
+            {categoryName(c.name, lang)}
+          </a>
+        ))
+      }
+    </nav>
+  </section>
+  <div class="wrap">
+    <AlbumIndex albums={category.albums} lang={lang} />
+  </div>
+</Base>
+
+<style>
+  .head {
+    padding-top: calc(var(--header-h) + clamp(56px, 9vw, 140px));
+    padding-bottom: clamp(56px, 8vw, 120px);
+    display: grid;
+    gap: 18px;
+    justify-items: start;
+  }
+  h1 {
+    font-size: clamp(56px, 9vw, 160px);
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+  .meta {
+    margin: 0;
+    font-size: 14px;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .others {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin-top: 12px;
+    font: 300 15px/1.4 var(--font-sans);
+    letter-spacing: 0.16em;
+    color: var(--fg-muted);
+  }
+  .others a:hover {
+    color: var(--fg);
+  }
+</style>

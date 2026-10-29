@@ -1,0 +1,145 @@
+---
+import { site } from "../site.config";
+import Wordmark from "./Wordmark.astro";
+import BlogLink from "./BlogLink.astro";
+import { categoriesPath, defaultLang, homePath, langOf, t, type Lang } from "../i18n";
+
+interface Props {
+  /** Where "back" goes when there is no earlier on-site page; null on the home page. */
+  back?: string | null;
+  lang?: Lang;
+}
+const { back, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+
+const path = decodeURI(Astro.url.pathname).replace(/^\/gallery(?=\/|$)/, "") || "/";
+// The page without its language prefix, so "am I on the front page?" reads the same everywhere.
+const here = langOf(path);
+const bare = here === defaultLang ? path : path.slice(here.length + 1) || "/";
+const isHome = bare === "/";
+const isCategories = bare.startsWith("/categories");
+---
+
+<header class:list={["site-header", { "has-back": back }]} data-header>
+  <a class="brand" href={homePath(lang)} aria-label={`${site.title} · ${tr.nav.home}`}>
+    <Wordmark size="30px" class="mark" />
+  </a>
+  <nav class="nav" aria-label={tr.nav.main}>
+    <a href={homePath(lang)} class="draw" aria-current={isHome ? "page" : undefined}>{tr.nav.works}</a>
+    <a href={categoriesPath(lang)} class="draw" aria-current={isCategories ? "page" : undefined}>{tr.nav.categories}</a>
+    <BlogLink class="nav-blog" lang={lang} />
+    <button class="theme" type="button" data-theme-toggle aria-label={tr.nav.theme} aria-keyshortcuts="D" title={tr.nav.theme}>
+      <span class="theme-dot" aria-hidden="true"></span>
+    </button>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) var(--gutter) 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--fg);
+    transition:
+      color 0.6s var(--ease),
+      transform 0.6s var(--ease);
+    view-transition-name: site-header;
+  }
+  .site-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    transition: opacity 0.6s var(--ease);
+  }
+  :global(body.is-scrolled) .site-header::before {
+    opacity: 1;
+  }
+  :global(body.is-scrolled-down) .site-header {
+    transform: translateY(-100%);
+  }
+  :global(body.has-hero:not(.is-scrolled)) .site-header {
+    color: #f3ede2;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: clamp(18px, 2.6vw, 40px);
+    font: 300 15.5px/1 var(--font-sans);
+    letter-spacing: 0.3em;
+  }
+  /* Two characters set in Chinese can breathe at 0.3em; English words cannot. */
+  :global(:root[lang="en"]) .nav {
+    letter-spacing: 0.07em;
+  }
+
+  .nav a {
+    opacity: 0.82;
+    transition: opacity 0.3s;
+  }
+  .nav a:hover,
+  .nav a[aria-current="page"] {
+    opacity: 1;
+  }
+
+  .theme {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin-right: -8px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .theme-dot {
+    border-radius: 50%;
+    width: 17px;
+    height: 17px;
+    border: 1px solid currentColor;
+    background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+    transition: transform 0.8s var(--ease-out);
+  }
+  .theme:hover .theme-dot {
+    transform: rotate(180deg);
+  }
+
+  /* Phones: the Blog link is left to the footer (under Elsewhere). */
+  @media (max-width: 640px) {
+    .nav :global(.nav-blog) {
+      display: none;
+    }
+  }
+
+  /* Inner pages: the back button takes the title's place in the bar. */
+  .has-back .brand {
+    visibility: hidden;
+  }
+  @media (max-width: 560px) {
+    .brand :global(.mark) {
+      --wm: 24px !important;
+    }
+    .nav {
+      gap: 14px;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+    }
+  }
+</style>

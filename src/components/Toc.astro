@@ -1,0 +1,175 @@
+---
+import type { MarkdownHeading } from 'astro';
+import { numberHeadings } from '../lib/toc';
+interface Props { headings: MarkdownHeading[] }
+const entries = numberHeadings(Astro.props.headings);
+import { i18n } from '../lib/i18n';
+const { t } = i18n(Astro.url);
+const sections = entries.filter((entry) => !entry.nested).length;
+---
+<aside class="article-toc" aria-label={t('toc')}>
+  <details class="toc-panel" data-toc-panel open>
+    <summary class="toc-summary">
+      <span class="toc-heading">
+        <span class="toc-kicker">ON THIS PAGE</span>
+        <span class="toc-title">{t('toc')}<span class="toc-count">{t('tocCount', { n: sections })}</span></span>
+      </span>
+      <svg class="toc-toggle" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </summary>
+    <div class="toc-content">
+      <div class="toc-position" aria-hidden="true"><span>{t('tocCurrent')}</span><span data-toc-counter>01 / {String(sections).padStart(2, '0')}</span></div>
+      <nav class="toc-scroll" data-toc-scroll aria-label={t('tocSections')}>
+        <div class="toc-list-wrap">
+          <span class="toc-marker" data-toc-marker aria-hidden="true"></span>
+          <ol class="toc-list" data-toc>
+            {entries.map((entry, index) => (
+              <li class:list={{ 'toc-nested': entry.nested }}>
+                <a href={`#${entry.slug}`} data-slug={entry.slug} data-section={entry.section} data-toc-index={index}>
+                  <span class="toc-number" aria-hidden="true">{entry.number}</span>
+                  <span class="toc-text">{entry.text}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </nav>
+    </div>
+  </details>
+  <script is:inline>
+    // fold the outline on narrow screens before the first paint; the module
+    // script below arrives later on a slow connection, and the open panel would
+    // otherwise show and then collapse. Without JS it simply stays open.
+    document.currentScript.previousElementSibling.open = matchMedia('(min-width: 1440px)').matches;
+  </script>
+</aside>
+
+<script>
+  import { activeHeadingIndex } from '../lib/toc';
+
+  const panel = document.querySelector<HTMLDetailsElement>('[data-toc-panel]');
+  if (panel) {
+    const links = [...panel.querySelectorAll<HTMLAnchorElement>('[data-toc-index]')];
+    const items = links.flatMap((link) => {
+      const heading = document.getElementById(link.dataset.slug!);
+      return heading ? [{ link, heading }] : [];
+    });
+    const scroller = panel.querySelector<HTMLElement>('[data-toc-scroll]')!;
+    const marker = panel.querySelector<HTMLElement>('[data-toc-marker]')!;
+    const counter = panel.querySelector<HTMLElement>('[data-toc-counter]')!;
+    const desktop = matchMedia('(min-width: 1440px)');
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const total = counter.textContent!.split('/')[1].trim();
+    let offsets: number[] = [];
+    let active = -1;
+    let scheduled = false;
+    let disposed = false;
+
+    function placeMarker(keepVisible: boolean) {
+      const link = items[active]?.link;
+      if (!link || !panel!.open) return;
+      marker.style.setProperty('--toc-marker-y', `${link.offsetTop + 6}px`);
+      marker.style.setProperty('--toc-marker-height', `${Math.max(12, link.offsetHeight - 12)}px`);
+      panel!.setAttribute('data-toc-ready', '');
+      if (keepVisible) {
+        const top = link.offsetTop;
+        if (top < scroller.scrollTop || top + link.offsetHeight > scroller.scrollTop + scroller.clientHeight) {
+          scroller.scrollTo({ top: Math.max(0, top - scroller.clientHeight / 3), behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+        }
+      }
+    }
+
+    function update() {
+      scheduled = false;
+      if (disposed) return;
+      const next = activeHeadingIndex(offsets, scrollY + 120);
+      if (next === active || next < 0) return;
+      if (active >= 0) items[active].link.removeAttribute('aria-current');
+      active = next;
+      items[active].link.setAttribute('aria-current', 'location');
+      counter.textContent = `${String(items[active].link.dataset.section).padStart(2, '0')} / ${total}`;
+      placeMarker(true);
+    }
+
+    function schedule() {
+      if (scheduled || disposed) return;
+      scheduled = true;
+      requestAnimationFrame(update);
+    }
+
+    function measure() {
+      if (disposed) return;
+      offsets = items.map(({ heading }) => heading.getBoundingClientRect().top + scrollY);
+      update();
+      placeMarker(false);
+    }
+
+    function syncLayout() {
+      panel!.open = desktop.matches;
+      requestAnimationFrame(measure);
+    }
+
+    // Smooth expand / collapse of the folded outline (every layout).
+    const summary = panel.querySelector<HTMLElement>('summary')!;
+    let anim: Animation | undefined;
+    function animateTo(open: boolean) {
+      if (reducedMotion.matches) { panel!.open = open; return; }
+      anim?.cancel();
+      anim = undefined;
+      const start = panel!.offsetHeight;
+      if (open) panel!.open = true;
+      const end = open ? panel!.scrollHeight : summary.offsetHeight + 2;
+      panel!.style.overflow = 'hidden';
+      const duration = Math.min(420, 180 + Math.abs(end - start) * 0.25);
+      const current = (anim = panel!.animate(
+        { height: [`${start}px`, `${end}px`] },
+        { duration, easing: 'cubic-bezier(.16, 1, .3, 1)' },
+      ));
+      panel!.classList.toggle('is-closing', !open);
+      // settle on finish, with a timer as a safety net (e.g. throttled tabs)
+      let settled = false;
+      const settle = () => {
+        if (settled || anim !== current) return;
+        settled = true;
+        if (!open) panel!.open = false;
+        current.cancel();
+        panel!.style.overflow = '';
+        panel!.classList.remove('is-closing');
+      };
+      current.onfinish = settle;
+      setTimeout(settle, duration + 60);
+    }
+    summary.addEventListener('click', (event) => {
+      event.preventDefault();
+      animateTo(!panel.open || panel.classList.contains('is-closing'));
+    });
+
+    panel.addEventListener('toggle', () => requestAnimationFrame(() => {
+      measure();
+      placeMarker(true);
+    }));
+    links.forEach((link) => link.addEventListener('click', () => {
+      if (!desktop.matches) {
+        animateTo(false);
+        panel.querySelector<HTMLElement>('summary')?.focus({ preventScroll: true });
+      }
+    }));
+    desktop.addEventListener('change', syncLayout);
+    addEventListener('scroll', schedule, { passive: true });
+    addEventListener('resize', measure, { passive: true });
+    const resizeObserver = 'ResizeObserver' in window ? new ResizeObserver(measure) : undefined;
+    const prose = document.querySelector('.article-body .prose-nit');
+    if (prose) resizeObserver?.observe(prose);
+    document.fonts.ready.then(measure);
+    addEventListener('pageshow', measure);
+    addEventListener('pagehide', (event) => {
+      if (event.persisted) return;
+      disposed = true;
+      resizeObserver?.disconnect();
+      removeEventListener('scroll', schedule);
+      removeEventListener('resize', measure);
+      removeEventListener('pageshow', measure);
+      desktop.removeEventListener('change', syncLayout);
+    }, { once: true });
+    syncLayout();
+  }
+</script>

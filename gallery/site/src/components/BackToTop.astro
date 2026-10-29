@@ -1,0 +1,54 @@
+---
+import { defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = defaultLang } = Astro.props;
+const tr = t(lang);
+---
+
+<button class="to-top" type="button" data-back-to-top aria-label={tr.album.top} title={tr.album.top} aria-hidden="true" inert>
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+    <path d="M5 4h14M12 20V8m-6 6 6-6 6 6" stroke-linecap="square" stroke-linejoin="miter" />
+  </svg>
+</button>
+
+<style>
+  .to-top {
+    position: fixed;
+    z-index: 50;
+    right: max(24px, env(safe-area-inset-right, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    color: var(--fg);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition:
+      opacity 0.6s var(--ease),
+      transform 0.8s var(--ease-out),
+      visibility 0.6s,
+      background-color 0.25s,
+      border-color 0.25s,
+      color 0.25s;
+  }
+  .to-top:global(.is-visible) {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .to-top:hover {
+    background: color-mix(in srgb, var(--fg) 80%, transparent);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+</style>

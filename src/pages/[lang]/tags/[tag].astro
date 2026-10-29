@@ -1,0 +1,8 @@
+---
+import Page, { getStaticPaths as base } from '../../tags/[tag].astro';
+export async function getStaticPaths() {
+  const paths = await base();
+  return ['en', 'ja'].flatMap((lang) => paths.map((p) => ({ params: { ...p.params, lang }, props: p.props })));
+}
+---
+<Page {...Astro.props} />

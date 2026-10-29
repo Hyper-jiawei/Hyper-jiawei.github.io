@@ -1,0 +1,48 @@
+---
+// Square dot-matrix text rendered to SVG at build time, ported from Hyper's Blog
+// (5×7 HD44780-style glyphs, see lib/dotfont.ts).
+import { layout } from "../lib/dotfont";
+
+interface Props {
+  text: string;
+  /** Optional pre-rasterized glyphs, drawn with the same dot geometry. */
+  grid?: ReturnType<typeof layout>;
+  /** Fixed rendered cell size, independent of the font's row count. */
+  cell?: string;
+  /** Extra text drawn in the accent colour right after `text` (it blinks inside an LED panel). */
+  accent?: string;
+  /** Show the unlit dots of the panel. */
+  ghost?: boolean;
+  /** Size of each dot within its cell (1 = touching). Smaller reads lighter. */
+  dot?: number;
+  class?: string;
+  label?: string;
+}
+const { text, grid, cell, accent = "", ghost = true, dot = 0.8, class: cls, label } = Astro.props;
+const full = text + accent;
+const rows = /[gjpqy,]/.test(full) ? 8 : 7;
+const { dots, width, height } = grid ?? layout(full, [...text].length, rows);
+const S = dot;
+const o = (1 - S) / 2;
+const sq = (x: number, y: number) => `M${x + o} ${y + o}h${S}v${S}h-${S}z`;
+const merged = new Map<string, string>();
+for (const d of dots.filter((d) => d.on)) {
+  const k = d.accent ? "dot-accent" : "dot-on";
+  merged.set(k, (merged.get(k) ?? "") + sq(d.x, d.y));
+}
+let ghostPath = "";
+if (ghost) for (let x = 0; x < width; x++) for (let y = 0; y < height; y++) ghostPath += sq(x, y);
+---
+
+<svg
+  class:list={["dot-matrix", cls]}
+  viewBox={`0 0 ${width} ${height}`}
+  role="img"
+  aria-label={label ?? full}
+  shape-rendering="crispEdges"
+  preserveAspectRatio="xMinYMid meet"
+  style={`aspect-ratio:${width}/${height};${cell ? `height:calc(${cell} * ${height})` : ""}`}
+>
+  {ghost && <path d={ghostPath} class="dot-ghost" />}
+  {[...merged].map(([k, d]) => <path d={d} class={k} />)}
+</svg>

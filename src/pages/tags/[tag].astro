@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+import PageHead from '../../components/PageHead.astro';
+import TagBrowser from '../../components/TagBrowser.astro';
+import { getListedPosts, tagCounts } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getListedPosts();
+  return tagCounts(posts).map((t) => ({ params: { tag: t.slug }, props: { name: t.name, slug: t.slug, count: t.count } }));
+}
+const { name, slug, count } = Astro.props;
+import { i18n } from '../../lib/i18n';
+const { t } = i18n(Astro.url);
+---
+<Base title={`#${name}`} description={t('tagMeta', { name })}>
+  <PageHead cmd={`grep -l "#${name}" ./posts/*`} dot="TAGS" title={`#${name}`} desc={t('tagCount', { n: count })} />
+  <TagBrowser active={slug} />
+</Base>

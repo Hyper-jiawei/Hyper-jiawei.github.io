@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- the "/." from the nit/blog. wordmark: a slash and a square full stop in
+       the accent, on the warm black page; hard corners like the rest of the site -->
+  <rect width="64" height="64" fill="#12110f"/>
+  <path d="M13 52h9.5L37.5 12H28z" fill="#cf5b40"/>
+  <path d="M41 42.5h9.5V52H41z" fill="#cf5b40"/>
+</svg>

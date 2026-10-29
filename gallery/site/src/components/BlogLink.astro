@@ -1,0 +1,159 @@
+---
+// Link to Hyper's Blog, set in the blog's own dot-matrix LED type.
+import DotMatrix from "./DotMatrix.astro";
+import blogMark from "../data/blog-wordmark.json";
+import { defaultLang, t, type Lang } from "../i18n";
+import { site } from "../site.config";
+
+interface Props {
+  class?: string;
+  lang?: Lang;
+}
+const { class: className, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+---
+
+<a href={site.blogUrl} target="_blank" rel="noopener" class:list={["led", className]} aria-label={`${tr.nav.blog} · Hyper's Blog`} title="Hyper's Blog">
+  <span class="layers">
+    <DotMatrix text="Blog" accent="_" grid={blogMark} cell="calc(var(--led-h, 16px) / 8)" dot={0.68} class="led-text" />
+    <span class="lit" aria-hidden="true">
+      <DotMatrix text="Blog" accent="_" grid={blogMark} cell="calc(var(--led-h, 16px) / 8)" dot={0.68} ghost={false} class="led-text" />
+    </span>
+  </span>
+  <span class="layers">
+    <svg class="ext" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+      <path d="M2.5 7.5 7.5 2.5M3.5 2.5h4v4" stroke-linecap="square"></path>
+    </svg>
+    <span class="lit" aria-hidden="true">
+      <svg class="ext" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M2.5 7.5 7.5 2.5M3.5 2.5h4v4" stroke-linecap="square"></path>
+      </svg>
+    </span>
+  </span>
+</a>
+
+<style>
+  /* Blog link: dot-matrix type from Hyper's Blog, no panel; unlit dots stay faintly visible. */
+  .led {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 0;
+    /* Match the optical centre of the neighbouring Noto Sans glyphs. */
+    transform: translateY(1px);
+  }
+  .led {
+    gap: 6px;
+  }
+  /* Small arrow: this link leaves the gallery. */
+  .ext {
+    display: block;
+    width: var(--led-arrow, 12px);
+    height: var(--led-arrow, 12px);
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  /* The old grid had 8 rows; Bitcount has 7. Keep each cell and its 0.68-sized
+     dot unchanged, including the smaller footer version. */
+  .led :global(.led-text) {
+    display: block;
+    height: var(--led-h, 16px);
+    width: auto;
+    overflow: visible;
+    /* Bitcount's seventh row is a descender; centre its six-row cap body. */
+    transform: translateY(calc(var(--led-h, 16px) / 16));
+  }
+  /* LED colours. Dark mode: the glowing green sign of Hyper's Blog (pale dot cores, two
+     layers of green glow, unlit dots faintly green). Light mode: the same sign printed
+     in deep phosphor green with a soft halo, so both read at a similar weight. */
+  .led {
+    --led: #1d8a3f;
+    --led-core: #0f5523;
+    --led-ghost: 0.13;
+    --led-glow: drop-shadow(0 0 0.6px color-mix(in oklab, var(--led) 60%, transparent))
+      drop-shadow(0 0 3px color-mix(in oklab, var(--led) 28%, transparent));
+    /* Printed sign: light it with a clearer green and no extra halo, so dots stay sharp. */
+    --led-lit: #12a144;
+    --led-glow-lit: none;
+  }
+  :global(:root[data-theme="dark"]) .led {
+    --led: #8dff9a;
+    --led-core: #e9ffec;
+    --led-ghost: 0.09;
+    --led-glow: drop-shadow(0 0 1px var(--led)) drop-shadow(0 0 5px color-mix(in oklab, var(--led) 70%, transparent));
+    --led-lit: #ffffff;
+    --led-glow-lit: drop-shadow(0 0 1.5px var(--led)) drop-shadow(0 0 9px var(--led));
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .led {
+      --led: #8dff9a;
+      --led-core: #e9ffec;
+      --led-ghost: 0.09;
+      --led-glow: drop-shadow(0 0 1px var(--led)) drop-shadow(0 0 5px color-mix(in oklab, var(--led) 70%, transparent));
+      --led-lit: #ffffff;
+      --led-glow-lit: drop-shadow(0 0 1.5px var(--led)) drop-shadow(0 0 9px var(--led));
+    }
+  }
+  /* Hover: the sign lights up in place. A second, brighter copy of the sign and arrow
+     sits on top and only fades its opacity, so the glow is drawn once instead of being
+     re-rasterized every frame (which stuttered and made the dots shimmer). */
+  .layers {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+  }
+  .lit {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.45s var(--ease);
+    will-change: opacity;
+    pointer-events: none;
+  }
+  .led:hover .lit,
+  .led:focus-visible .lit {
+    opacity: 1;
+  }
+  /* Hover: the underscore blinks like a terminal cursor (its unlit dots stay faintly on). */
+  .led:hover :global(.dot-accent),
+  .led:focus-visible :global(.dot-accent) {
+    animation: led-cursor 1.06s steps(1, end) infinite;
+  }
+  @keyframes led-cursor {
+    50% {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .led :global(.dot-accent) {
+      animation: none !important;
+    }
+  }
+  .led :global(.led-text),
+  .led .ext {
+    filter: var(--led-glow);
+  }
+  .lit :global(.led-text),
+  .lit .ext {
+    filter: var(--led-glow-lit);
+  }
+  .lit :global(.dot-on),
+  .lit :global(.dot-accent) {
+    fill: var(--led-lit) !important;
+  }
+  .led .lit .ext {
+    display: block;
+    opacity: 1;
+    color: var(--led-lit);
+  }
+  .led :global(.dot-ghost) {
+    fill: var(--led);
+    opacity: var(--led-ghost);
+  }
+  .led :global(.dot-on),
+  .led :global(.dot-accent) {
+    fill: var(--led-core);
+  }
+  .led .ext {
+    color: var(--led-core);
+  }
+</style>

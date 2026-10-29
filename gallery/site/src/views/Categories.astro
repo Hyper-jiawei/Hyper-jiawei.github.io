@@ -1,0 +1,171 @@
+---
+import Base from "../layouts/Base.astro";
+import { categories, coverOf, pick, categoryUrl, pad2 } from "../lib/gallery";
+import { categoryName, defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const cats = categories();
+---
+
+<Base lang={lang} title={tr.categories.title} description={tr.categories.description}>
+  <section class="head wrap">
+    <p class="label">{tr.categories.eyebrow}</p>
+    <h1 class="cn-title">{tr.categories.title}</h1>
+  </section>
+  <ol class="toc wrap">
+    {
+      cats.map((c, i) => {
+        // A few covers from the category, preferring multi-photo albums.
+        const faces = [...c.albums.filter((a) => a.featured || a.layout === "gallery"), ...c.albums].filter((a, j, arr) => arr.indexOf(a) === j).slice(0, 4);
+        return (
+          <li class="reveal">
+            <a href={categoryUrl(c.name, lang)} class="entry">
+              <span class="idx num">{pad2(i + 1)}</span>
+              <span class="name cn-title">{categoryName(c.name, lang)}</span>
+              <span class="counts num">
+                {tr.categories.count(c.albums.length, c.photos)}
+              </span>
+              <span class="strip" aria-hidden="true">
+                {faces.map((a) => {
+                  const cover = coverOf(a);
+                  const v = pick(cover, 480);
+                  return (
+                    <span class="thumb" style={`background-color:${cover.color}`}>
+                      <img class="fade" src={v.url} alt="" loading="lazy" decoding="async" width={v.w} height={v.h} onload="this.classList.add('is-loaded')" />
+                    </span>
+                  );
+                })}
+              </span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+</Base>
+
+<style>
+  .head {
+    padding-top: calc(var(--header-h) + clamp(56px, 9vw, 140px));
+    padding-bottom: clamp(40px, 5vw, 80px);
+    display: grid;
+    /* Room between the English label and the big Chinese title. */
+    gap: clamp(16px, 2vw, 32px);
+  }
+  /* The English label matches the 12px date lines elsewhere. */
+  .head .label {
+    font-size: 12px;
+  }
+  h1 {
+    font-size: clamp(64px, 10vw, 170px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.08em;
+  }
+  /* One grid shared by every row (subgrid), so counts and thumbnails sit in the same
+     columns on every row, and each row's thumbnails end on the dividing line. */
+  .toc {
+    --toc-cols: 64px minmax(0, 1fr) auto auto;
+    list-style: none;
+    /* Block margins only: .wrap centres the list (and caps its width) like the rest. */
+    margin-block: 0;
+    padding-top: 0;
+    display: grid;
+    grid-template-columns: var(--toc-cols);
+    column-gap: clamp(16px, 3vw, 48px);
+  }
+  .toc li {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    border-top: 1px solid var(--line);
+  }
+  .toc li:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .entry {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-items: center;
+    row-gap: clamp(16px, 3vw, 48px);
+    padding-block: clamp(22px, 3vw, 40px);
+  }
+  .idx {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .name {
+    font-size: clamp(30px, 4.4vw, 72px);
+    line-height: 1.1;
+    transition:
+      letter-spacing 0.8s var(--ease-out),
+      color 0.4s;
+  }
+  .name {
+    font-weight: 900;
+  }
+  .entry:hover .name {
+    letter-spacing: 0.24em;
+  }
+  .counts {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+  .strip {
+    display: flex;
+    gap: 8px;
+    justify-self: end;
+  }
+  .thumb {
+    width: clamp(48px, 5.4vw, 92px);
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+  }
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .entry:hover .thumb:nth-child(2) img {
+    transition-delay: 0.06s;
+  }
+  .entry:hover .thumb:nth-child(3) img {
+    transition-delay: 0.12s;
+  }
+  .entry:hover .thumb:nth-child(4) img {
+    transition-delay: 0.18s;
+  }
+  @media (max-width: 900px) {
+    .toc {
+      --toc-cols: 40px minmax(0, 1fr) auto;
+    }
+    .strip {
+      grid-column: 2 / -1;
+      justify-self: stretch;
+    }
+  }
+  @media (max-width: 560px) {
+    .toc {
+      --toc-cols: 32px minmax(0, 1fr);
+    }
+    .strip {
+      width: 100%;
+    }
+    .thumb {
+      flex: 1;
+      width: auto;
+    }
+    .counts {
+      grid-column: 2;
+      font-size: 15px;
+    }
+  }
+</style>

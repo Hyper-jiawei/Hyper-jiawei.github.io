@@ -1,0 +1,75 @@
+---
+// Square dot-matrix text rendered to SVG at build time (see lib/dotfont.ts).
+import { layout, type Dot } from '../lib/dotfont';
+import { rasterize, PIXEL_FONTS } from '../lib/pixelfont.mjs';
+
+interface Props {
+  text: string;
+  /** Extra text drawn in the accent colour right after `text`. */
+  accent?: string;
+  /** Show the unlit dots of the panel. */
+  ghost?: boolean;
+  /** Light the columns up one after another on load. */
+  animate?: boolean;
+  class?: string;
+  label?: string;
+  /** Render with a proportional pixel font instead of the built-in 5×7 grid. */
+  font?: keyof typeof PIXEL_FONTS;
+  /** Extra unlit pixel columns before the text. */
+  leadingColumns?: number;
+}
+const { text, accent = '', ghost = true, animate = false, class: cls = 'h-8', label, font, leadingColumns = 0 } = Astro.props;
+const full = text + accent;
+let dots: Dot[], width: number, height: number;
+if (font) {
+  const f = PIXEL_FONTS[font];
+  const r = rasterize(f.file, full, f.px, f.offset);
+  const n = [...text].length;
+  dots = r.dots.map(([x, y, gi]: number[]) => ({ x, y, on: true, accent: gi >= n, g: gi }));
+  ({ width, height } = r);
+} else {
+  const rows = /[gjpqy,]/.test(full) ? 8 : 7;
+  ({ dots, width, height } = layout(full, [...text].length, rows));
+}
+if (leadingColumns > 0) {
+  dots = dots.map((d) => ({ ...d, x: d.x + leadingColumns }));
+  width += leadingColumns;
+}
+const S = font ? PIXEL_FONTS[font].dot : 0.8; // dot size; the rest of the cell is the gap
+const o = (1 - S) / 2;
+const sq = (x: number, y: number) => `M${x + o} ${y + o}h${S}v${S}h-${S}z`;
+
+// Static text: merge dots per colour into a couple of paths.
+// Animated text: every pixel of a letter switches on together, instantly,
+// letter after letter from left to right (spaces are skipped).
+const lit = dots.filter((d) => d.on);
+const letters = [...new Set(lit.map((d) => d.g))].sort((a, b) => a - b);
+const LETTER_MS = 90;
+const pixels = animate
+  ? lit.map((d) => ({
+      d: sq(d.x, d.y),
+      cls: d.accent ? 'dot-accent' : 'dot-on',
+      delay: letters.indexOf(d.g) * LETTER_MS,
+    }))
+  : [];
+const merged = new Map<string, string>();
+if (!animate) for (const d of lit) {
+  const cls = d.accent ? 'dot-accent' : 'dot-on';
+  merged.set(cls, (merged.get(cls) ?? '') + sq(d.x, d.y));
+}
+let ghostPath = '';
+if (ghost) for (let x = 0; x < width; x++) for (let y = 0; y < height; y++) ghostPath += sq(x, y);
+---
+<svg
+  class:list={['dot-matrix', { 'dot-animate': animate }, cls]}
+  viewBox={`0 0 ${width} ${height}`}
+  role="img"
+  aria-label={label ?? full}
+  shape-rendering="crispEdges"
+  preserveAspectRatio="xMinYMid meet"
+  style={`aspect-ratio:${width}/${height}`}
+>
+  {ghost && <path d={ghostPath} class="dot-ghost" />}
+  {[...merged].map(([cls, d]) => <path d={d} class={cls} />)}
+  {pixels.map((p) => <path d={p.d} class={p.cls} style={`--d:${p.delay}ms`} />)}
+</svg>

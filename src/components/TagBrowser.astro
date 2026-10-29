@@ -1,0 +1,58 @@
+---
+// Tag picker + post list in one place. Every tag is a real link (works
+// without JS); with JS the list filters in place and the URL follows.
+import PostRow from './PostRow.astro';
+import { getListedPosts, tagCounts, tagSlug, tagUrl } from '../lib/posts';
+interface Props { active?: string }
+const { active = '' } = Astro.props;
+import { i18n } from '../lib/i18n';
+const { lang, t, l } = i18n(Astro.url);
+const posts = await getListedPosts();
+const tags = tagCounts(posts);
+const shown = active ? posts.filter((p) => p.data.tags.some((t) => tagSlug(t) === active)) : posts;
+---
+<div class="wrap tag-browser" data-tag-browser>
+  <nav class="tag-filter" aria-label={t('tagFilter')}>
+    <a href={l('/tags/')} data-tag="" aria-current={active ? undefined : 'true'}>{t('all')}<sup>{posts.length}</sup></a>
+    {tags.map((tg) => (
+      <a href={tagUrl(tg.name, lang)} data-tag={tg.slug} data-name={tg.name} aria-current={active === tg.slug ? 'true' : undefined}>#{tg.name}<sup>{tg.count}</sup></a>
+    ))}
+  </nav>
+  <p class="tag-result" data-all-label={t('allPosts')}><span data-tag-label>{active ? `#${tags.find((tg) => tg.slug === active)?.name}` : t('allPosts')}</span><span class="term-sm" data-tag-count>{shown.length} {shown.length === 1 ? 'post' : 'posts'}</span></p>
+  <ul class="-mx-3 divide-y divide-line sm:-mx-4" data-tag-list>
+    {posts.map((p) => <PostRow post={p} />)}
+  </ul>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-tag-browser]');
+  if (root) {
+    const links = [...root.querySelectorAll<HTMLAnchorElement>('[data-tag]')];
+    const rows = [...root.querySelectorAll<HTMLElement>('[data-tag-list] > li')];
+    const label = root.querySelector<HTMLElement>('[data-tag-label]')!;
+    const count = root.querySelector<HTMLElement>('[data-tag-count]')!;
+    const apply = (slug: string) => {
+      let n = 0;
+      for (const row of rows) {
+        const on = !slug || (row.dataset.tags || '').split(' ').includes(slug);
+        row.hidden = !on;
+        if (on) n++;
+      }
+      for (const link of links) {
+        if (link.dataset.tag === slug) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
+      const name = links.find((l) => l.dataset.tag === slug)?.dataset.name;
+      label.textContent = slug ? `#${name}` : (label.parentElement!.dataset.allLabel ?? '');
+      count.textContent = `${n} ${n === 1 ? 'post' : 'posts'}`;
+    };
+    apply(links.find((l) => l.getAttribute('aria-current'))?.dataset.tag || '');
+    root.addEventListener('click', (event) => {
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('[data-tag]');
+      if (!link || event.metaKey || event.ctrlKey || event.shiftKey) return;
+      event.preventDefault();
+      apply(link.dataset.tag || '');
+      history.replaceState(null, '', link.href);
+    });
+  }
+</script>

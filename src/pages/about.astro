@@ -1,0 +1,40 @@
+---
+import { Image } from 'astro:assets';
+import { getEntry, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
+import Icon from '../components/Icon.astro';
+import avatar from '../assets/avatar.png';
+import { GALLERY, SOCIALS } from '../lib/site';
+
+import { i18n } from '../lib/i18n';
+const { lang, t } = i18n(Astro.url);
+// one file per language: about.md (zh), about-en.md, about-ja.md
+const page = (await getEntry('pages', lang === 'zh' ? 'about' : `about-${lang}`))!;
+const { Content } = await render(page);
+const links = [{ id: 'gallery', label: GALLERY.label, href: GALLERY.href }, ...SOCIALS];
+---
+<Base title={t('aboutTitle')} description={t('aboutMeta')}>
+  <PageHead cmd="cat ./about.md" dot="ABOUT" title={t('aboutTitle')} />
+  <div class="wrap grid gap-12 lg:grid-cols-[15rem_minmax(0,42.5rem)]">
+    <aside class="space-y-6">
+      <Image src={avatar} alt={t('avatarAlt')} width={160} height={160} class="rounded-full object-cover" />
+      <div>
+        <p class="font-semibold text-fg">Hyper'jiawei</p>
+        <p class="term-sm mt-0.5">@Hyper · Hyper-jiawei</p>
+      </div>
+      <ul class="space-y-2 text-(length:--fs-sm)">
+        {links.map((s) => (
+          <li>
+            <a href={s.href} target={s.id === 'email' ? undefined : '_blank'} rel="noopener me" class="flex items-center gap-2.5 text-muted transition-colors hover:text-accent">
+              <Icon name={s.id} />{s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+    <div class="prose prose-nit" data-pagefind-body>
+      <Content />
+    </div>
+  </div>
+</Base>

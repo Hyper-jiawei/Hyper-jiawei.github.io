@@ -1,0 +1,939 @@
+---
+import Base from "../layouts/Base.astro";
+import VTitle from "../components/VTitle.astro";
+import WorkPhoto from "../components/WorkPhoto.astro";
+import {
+  type Album,
+  type Photo,
+  coverOf,
+  srcsetOf,
+  pick,
+  largest,
+  aspect,
+  formatDate,
+  categoryUrl,
+  albumUrl,
+  neighbours,
+  numberOf,
+  exifLine,
+  pad2,
+  stageSizes,
+  firstPhotoSizes,
+  printedPhotoSizes,
+  preloadFor,
+} from "../lib/gallery";
+import { toneFor } from "../lib/palette";
+import { categoryName, defaultLang, t, type Lang } from "../i18n";
+
+interface Props {
+  album: Album;
+  lang?: Lang;
+}
+const { album, lang = defaultLang } = Astro.props;
+const tr = t(lang);
+const cover = coverOf(album);
+const { newer, older } = neighbours(album);
+const single = album.layout === "single";
+// "Actual size": every photo printed at its physical size, so a wide window shows more of
+// them rather than bigger ones.
+const actual = album.layout === "actual";
+const no = numberOf(album);
+const tone = toneFor(single ? album.photos[0] : cover);
+const photo = album.photos[0];
+const exif = photo.exif;
+const exifRows = exif
+  ? ([
+      ["Camera", exif.camera],
+      ["Lens", exif.lens],
+      ["Focal", exif.focal],
+      ["Aperture", exif.aperture],
+      ["Shutter", exif.shutter],
+      ["ISO", exif.iso?.replace("ISO ", "")],
+    ].filter(([, v]) => v) as [string, string][])
+  : [];
+
+const pswpData = (p: Photo) => {
+  const big = p.original ?? largest(p);
+  return {
+    href: big.url,
+    "data-pswp-width": big.w,
+    "data-pswp-height": big.h,
+    "data-download-name": p.file,
+    "data-title": album.title,
+    "data-exif": JSON.stringify(p.exif ?? {}),
+  };
+};
+const firstPhoto = single ? photo : album.photos[0];
+
+// Lay the photographs out like an exhibition: wide frames alternate sides,
+// consecutive verticals hang as a pair, a lone vertical sits off-centre.
+type Row =
+  | { kind: "wide" | "tall"; side: "l" | "r"; items: { p: Photo; n: number }[] }
+  | { kind: "pair"; side: "l" | "r"; items: { p: Photo; n: number }[] };
+const rows: Row[] = [];
+if (!single) {
+  const ps = album.photos;
+  for (let i = 0; i < ps.length; ) {
+    const side = rows.length % 2 === 0 ? "l" : "r";
+    if (aspect(ps[i]) < 1 && ps[i + 1] && aspect(ps[i + 1]) < 1) {
+      rows.push({ kind: "pair", side, items: [{ p: ps[i], n: i + 1 }, { p: ps[i + 1], n: i + 2 }] });
+      i += 2;
+    } else {
+      rows.push({ kind: aspect(ps[i]) >= 1 ? "wide" : "tall", side, items: [{ p: ps[i], n: i + 1 }] });
+      i += 1;
+    }
+  }
+}
+---
+
+<Base
+  lang={lang}
+  title={album.title}
+  description={tr.album.description(album.title, formatDate(album.date, lang), album.photos.length)}
+  image={pick(cover, 1600).url}
+  noindex={album.private}
+  tone={tone}
+  preloadImage={{ src: pick(firstPhoto, single ? 1600 : 960).url, srcset: srcsetOf(firstPhoto), sizes: firstPhotoSizes(album) }}
+>
+  {
+    single ? (
+      <section class="museum wrap" data-gallery>
+        <a class="museum-photo" style={`--photo-aspect:${aspect(photo)}`} {...pswpData(photo)}>
+          <img
+            src={pick(photo, 1600).url}
+            srcset={srcsetOf(photo)}
+            sizes={stageSizes(photo)}
+            data-stage
+            width={photo.width}
+            height={photo.height}
+            alt={album.title}
+            fetchpriority="high"
+            decoding="async"
+            style={`aspect-ratio:${aspect(photo).toFixed(4)};background-color:${photo.color}`}
+            transition:name={`photo-${photo.key}`}
+            data-vt-current={photo.key}
+          />
+        </a>
+        <aside class="plaque">
+          <div class="plaque-scrollbar" role="scrollbar" tabindex="0" aria-label={tr.album.scrollInfo} aria-controls="photo-details" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" hidden>
+            <span class="plaque-scrollbar-thumb" aria-hidden="true" />
+          </div>
+          <div id="photo-details" class="plaque-details" tabindex="0" role="region" aria-label={tr.album.photoInfo}>
+            <div class="plaque-top">
+              {no && <p class="no num">°{no}</p>}
+              <VTitle tag="h1" class="plaque-title" text={album.title} />
+            </div>
+            <div class="plaque-body">
+              <p class="date num">{formatDate(album.date, lang)}</p>
+              <p class="cats label">
+                {album.categories.map((c, i) => (
+                  <>
+                    {i > 0 && " · "}
+                    <a href={categoryUrl(c, lang)} class="draw">
+                      {categoryName(c, lang)}
+                    </a>
+                  </>
+                ))}
+              </p>
+              {exifRows.length > 0 && (
+                <dl class="exif">
+                  {exifRows.map(([k, v]) => (
+                    <div class:list={{ wide: k === "Camera" || k === "Lens" }}>
+                      <dt class="label">{k}</dt>
+                      <dd class="num">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {photo.palette && (
+                <div class="palette">
+                  <p class="label">Palette</p>
+                  <div class="swatches" role="img" aria-label={tr.album.paletteAria(photo.palette.colors.join("、"))}>
+                    {photo.palette.colors.map((c) => (
+                      <span class="swatch" style={`background-color:${c}`} title={c} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <nav class="flip flip-side" aria-label={tr.album.flip}>
+          {newer ? (
+            <a class="flip-btn prev" href={albumUrl(newer, lang)} data-flip="prev" data-astro-prefetch="load" {...preloadFor(newer)} title={`${tr.album.prev} · ${newer.title}`}>
+              <span class="arrow" aria-hidden="true">←</span>
+              <span class="flip-label label">{tr.album.prev}</span>
+              <span class="flip-title">{newer.title}</span>
+            </a>
+          ) : <span />}
+          {older ? (
+            <a class="flip-btn next" href={albumUrl(older, lang)} data-flip="next" data-astro-prefetch="load" {...preloadFor(older)} title={`${tr.album.next} · ${older.title}`}>
+              <span class="flip-title">{older.title}</span>
+              <span class="flip-label label">{tr.album.next}</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          ) : <span />}
+        </nav>
+        </aside>
+
+      </section>
+    ) : (
+      <>
+        <section class="album-head wrap">
+          <div class="head-main">
+            <p class="label cats">
+              {album.categories.map((c, i) => (
+                <>
+                  {i > 0 && " · "}
+                  <a href={categoryUrl(c, lang)} class="draw">
+                    {categoryName(c, lang)}
+                  </a>
+                </>
+              ))}
+              {album.categories.length > 0 && " · "}{tr.album.series}
+            </p>
+            <h1 class="head-title" style={`--len:${Math.max(4, [...album.title].length)}`}>{album.title}</h1>
+          </div>
+          <div class="head-side">
+            <p class="head-meta num">
+              {no && <span class="no">°{no}</span>}
+              <span>{formatDate(album.date, lang, "short")}</span>
+              <span>{tr.album.frames(album.photos.length)}</span>
+            </p>
+            <nav class="flip flip-side" aria-label={tr.album.flip}>
+            {newer ? (
+              <a class="flip-btn prev" href={albumUrl(newer, lang)} data-flip="prev" data-astro-prefetch="load" {...preloadFor(newer)} title={`${tr.album.prev} · ${newer.title}`}>
+                <span class="arrow" aria-hidden="true">←</span>
+                <span class="flip-label label">{tr.album.prev}</span>
+                <span class="flip-title">{newer.title}</span>
+              </a>
+            ) : <span />}
+            {older ? (
+              <a class="flip-btn next" href={albumUrl(older, lang)} data-flip="next" data-astro-prefetch="load" {...preloadFor(older)} title={`${tr.album.next} · ${older.title}`}>
+                <span class="flip-title">{older.title}</span>
+                <span class="flip-label label">{tr.album.next}</span>
+                <span class="arrow" aria-hidden="true">→</span>
+              </a>
+            ) : <span />}
+          </nav>
+          </div>
+          <a class="scroll-hint label" href="#sequence">
+            <span class="hint-line" aria-hidden="true" />
+            {tr.album.scroll}
+          </a>
+        </section>
+
+        {album.description && <p class="description wrap cn-title">{album.description}</p>}
+
+        <section class:list={["sequence wrap", { actual }]} id="sequence" data-gallery>
+          <div class:list={["sheet-editorial", { "sheet-printed": actual }]}>
+            {rows.map((row) => (
+              <div class:list={["row", row.kind, row.side]}>
+                {row.items.map(({ p, n }) => {
+                  const w = p.actual?.w ?? (aspect(p) >= 1 ? 557 : 376);
+                  return (
+                    <WorkPhoto
+                      p={p}
+                      n={n}
+                      album={album}
+                      lang={lang}
+                      class={actual ? "printed" : undefined}
+                      sizes={actual ? printedPhotoSizes(p) : row.kind === "wide" ? "(max-width: 900px) 100vw, 72vw" : "(max-width: 900px) 100vw, 40vw"}
+                      style={actual ? `--w:${w}px;--h:${w / aspect(p)}px` : undefined}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <p class="fin" aria-hidden="true">
+            {tr.album.end}
+          </p>
+          {/* Phones: paging waits at the end of the album instead of under the title. */}
+            <nav class="flip flip-side flip-end" aria-label={tr.album.flip}>
+            {newer ? (
+              <a class="flip-btn prev" href={albumUrl(newer, lang)} data-flip="prev" data-astro-prefetch="load" {...preloadFor(newer)} title={`${tr.album.prev} · ${newer.title}`}>
+                <span class="arrow" aria-hidden="true">←</span>
+                <span class="flip-label label">{tr.album.prev}</span>
+                <span class="flip-title">{newer.title}</span>
+              </a>
+            ) : <span />}
+            {older ? (
+              <a class="flip-btn next" href={albumUrl(older, lang)} data-flip="next" data-astro-prefetch="load" {...preloadFor(older)} title={`${tr.album.next} · ${older.title}`}>
+                <span class="flip-title">{older.title}</span>
+                <span class="flip-label label">{tr.album.next}</span>
+                <span class="arrow" aria-hidden="true">→</span>
+              </a>
+            ) : <span />}
+          </nav>
+        </section>
+      </>
+    )
+  }
+
+</Base>
+
+<style>
+  /* ---------- Single photograph, hung like a museum piece ---------- */
+  .museum {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+    gap: clamp(28px, 4vw, 72px);
+    height: 100svh;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    padding-top: calc(var(--header-h) + 24px);
+    padding-bottom: 32px;
+    align-items: center;
+  }
+
+  /* Left/right paging in the side column, always on the first screen. */
+  .flip {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  /* Side column: two square arrows; the neighbouring title shows on hover. */
+  .flip-side {
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .flip-side .flip-btn {
+    position: relative;
+  }
+  .flip-side .next {
+    flex-direction: row-reverse;
+  }
+  .flip-side .flip-title,
+  .flip-side .flip-label {
+    display: none;
+  }
+  .flip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    max-width: 100%;
+    height: 40px;
+    color: var(--fg-muted);
+    transition: color 0.3s;
+  }
+  .flip-btn:hover {
+    color: var(--fg);
+  }
+  .arrow {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    font-family: var(--font-sans);
+    transition:
+      background-color 0.3s,
+      color 0.3s,
+      border-color 0.3s;
+  }
+  .flip-btn:hover .arrow {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+  .flip-title {
+    font: 800 15px/1.2 var(--font-cn);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .museum-photo {
+    display: block;
+    justify-self: center;
+    width: min(100%, calc((100svh - var(--header-h) - 56px) * var(--photo-aspect)));
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    cursor: zoom-in;
+    /* Keep the paging curtain (.reveal) transitions alongside the shadow's. */
+    transition:
+      box-shadow 1.2s var(--ease),
+      clip-path 1.3s var(--ease-out),
+      opacity 1s var(--ease),
+      transform 1.3s var(--ease-out);
+  }
+  /* The shadow is not part of the flying photo: hold it back until the photo has landed. */
+  :global(:root[data-photo-landing]) .museum-photo {
+    box-shadow: none;
+  }
+  .museum-photo img {
+    /* Pairs with the page frame it opened from (see the *.photo view-transition rules). */
+    view-transition-class: photo;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    transition: transform 1.6s var(--ease-out);
+  }
+  .plaque {
+    position: relative;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 0;
+    padding-left: clamp(20px, 2.4vw, 40px);
+    border-left: 1px solid var(--line);
+    animation: rise 1.2s 0.2s var(--ease-out) both;
+  }
+  .plaque-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 24px;
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+  .plaque-details::-webkit-scrollbar {
+    display: none;
+  }
+  @media (min-width: 901px) {
+    .plaque.has-floating-paging .plaque-details {
+      /* Let content pass behind the controls, with room to reveal the last row. */
+      padding-bottom: var(--paging-clearance);
+      scroll-padding-bottom: var(--paging-clearance);
+    }
+    .plaque.has-floating-paging > .flip {
+      position: absolute;
+      z-index: 1;
+      bottom: 0;
+      left: clamp(20px, 2.4vw, 40px);
+      right: 0;
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      transition: background-color 1.1s var(--ease);
+    }
+  }
+  /* The existing divider is the track; only its movable segment is drawn. */
+  .plaque-scrollbar {
+    position: absolute;
+    top: 0;
+    left: -7px;
+    width: 13px;
+    height: 100%;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  .plaque-scrollbar[hidden] {
+    display: none;
+  }
+  .plaque-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    left: 5px;
+    width: 3px;
+    height: var(--scroll-thumb, 24px);
+    transform: translateY(var(--scroll-offset, 0px));
+    background: var(--fg-faint);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.25s var(--ease), background-color 0.2s var(--ease);
+  }
+  .plaque-scrollbar.is-scrolling .plaque-scrollbar-thumb,
+  .plaque-scrollbar.is-dragging .plaque-scrollbar-thumb {
+    opacity: 1;
+  }
+  .plaque-scrollbar:hover .plaque-scrollbar-thumb,
+  .plaque-scrollbar:focus-visible .plaque-scrollbar-thumb,
+  .plaque-scrollbar.is-dragging .plaque-scrollbar-thumb {
+    background: var(--accent);
+  }
+  .plaque-top,
+  .plaque-body,
+  .plaque > .flip {
+    flex-shrink: 0;
+  }
+  .no {
+    margin: 0 0 22px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .plaque :global(.plaque-title) {
+    font-size: clamp(28px, 2.8vw, 48px);
+    max-height: 34svh;
+  }
+  .plaque-body {
+    display: grid;
+    gap: 14px;
+  }
+  .date {
+    margin: 0;
+    font: 800 18px/1.4 var(--font-cn);
+  }
+  /* Category links (single photo and album): larger than the 10px labels so the
+     Chinese names read comfortably. */
+  .cats {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    /* Words in the sans, as on the cards: Latin in the mono ran long and loud. */
+    font-family: var(--font-sans);
+  }
+  .exif {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin: 8px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .exif div {
+    display: grid;
+    gap: 1px;
+  }
+  .exif .wide {
+    grid-column: 1 / -1;
+  }
+  .exif dt {
+    font-size: 9.5px;
+    color: var(--fg-faint);
+  }
+  .exif dd {
+    margin: 0;
+    font: 300 13px/1.4 var(--font-mono);
+    font-stretch: 87.5%;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  /* Colour card: the photograph's four main colours as 2:1 swatches, after the settings. */
+  .palette {
+    display: grid;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .palette .label {
+    margin: 0;
+    font-size: 9.5px;
+    color: var(--fg-faint);
+  }
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .swatch {
+    /* Same width as before, half the height. */
+    aspect-ratio: 4 / 1;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  /* ---------- Album head: no lead image, the first photographs peek in below ---------- */
+  .album-head {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 24px 48px;
+    min-height: 46svh;
+    padding-top: calc(var(--header-h) + 8vh);
+    padding-bottom: 72px;
+    border-bottom: 1px solid var(--line);
+    animation: rise 1.1s 0.1s var(--ease-out) both;
+  }
+  .head-main {
+    display: grid;
+    gap: 18px;
+  }
+  /* Size the title to its length so long names stay on one or two calm lines. */
+  .head-title {
+    font: 900 clamp(40px, min(7.5vw, 150vw / var(--len) / 1.6), 128px) / 1.08 var(--font-cn);
+    letter-spacing: 0.04em;
+    text-wrap: balance;
+    max-width: 16em;
+  }
+  .head-side {
+    display: grid;
+    gap: 16px;
+    justify-items: end;
+  }
+  .sequence > .flip-end {
+    display: none;
+  }
+  .head-side .flip-side {
+    justify-content: flex-end;
+    width: 100%;
+    min-width: 120px;
+  }
+  .head-meta {
+    display: grid;
+    justify-items: end;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--fg-muted);
+  }
+  .head-meta .no {
+    color: var(--accent);
+  }
+  .scroll-hint {
+    position: absolute;
+    left: var(--gutter);
+    bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* Same size as the album's date line. */
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+  .hint-line {
+    position: relative;
+    width: 1px;
+    height: 28px;
+    overflow: hidden;
+    background: var(--line);
+  }
+  .hint-line::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -100%;
+    width: 1px;
+    height: 100%;
+    background: var(--fg);
+    animation: drip 2s var(--ease) infinite;
+  }
+  @keyframes drip {
+    to {
+      top: 100%;
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+  }
+  .description {
+    max-width: 760px;
+    margin-top: clamp(48px, 8vw, 120px);
+    font-size: 18px;
+    line-height: 2;
+    color: var(--fg-muted);
+  }
+
+  /* ---------- Sequence ---------- */
+  .sequence {
+    display: grid;
+    gap: clamp(72px, 11vw, 180px);
+    margin-top: clamp(28px, 4vw, 56px);
+  }
+  .sheet-editorial {
+    display: grid;
+    gap: clamp(72px, 11vw, 180px);
+  }
+  /* Share one image list: phones use the ordinary editorial rows; wider windows
+     flatten those wrappers into a measured sheet without duplicating lightbox slides. */
+  @media (min-width: 901px) {
+    .sheet-printed .row { display: contents; }
+    .sheet-printed .row :global(.work) {
+      margin: 0 !important;
+    }
+  .sequence.actual {
+    gap: 0;
+    overflow-x: clip;
+  }
+  .sequence.actual .fin {
+    margin-top: clamp(56px, 8vw, 112px);
+  }
+  .sequence.actual .flip-end {
+    margin-top: 36px;
+  }
+  .sheet-printed {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: clamp(34px, 5vw, 92px) clamp(20px, 3.2vw, 52px);
+    width: 100%;
+    min-width: 0;
+  }
+  .sheet-printed :global(.work) {
+    width: min(100%, calc(var(--w, 376px) * var(--size-scale, 1)));
+    min-width: 0;
+    margin: 0;
+  }
+  .sheet-printed[data-layout-ready] {
+    display: block;
+    position: relative;
+    height: var(--print-height);
+  }
+  .sheet-printed[data-layout-ready] :global(.work) {
+    position: absolute;
+    left: var(--print-x, 0px);
+    top: var(--print-y, 0px);
+    width: var(--print-width);
+  }
+  .sheet-printed :global(figcaption) {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 10px;
+  }
+
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(16px, 2.2vw, 40px);
+    align-items: start;
+  }
+  .wide.l :global(.work) { grid-column: 1 / span 9; }
+  .wide.r :global(.work) { grid-column: 4 / span 9; }
+  .tall.l :global(.work) { grid-column: 2 / span 5; }
+  .tall.r :global(.work) { grid-column: 7 / span 5; }
+  .pair :global(.work:first-child) { grid-column: 1 / span 5; }
+  .pair :global(.work:last-child) { grid-column: 7 / span 5; margin-top: 14vw; }
+  .pair.r :global(.work:first-child) { margin-top: 14vw; }
+  .pair.r :global(.work:last-child) { margin-top: 0; }
+
+  :global(.work) {
+    margin: 0;
+  }
+  :global(.work-photo) {
+    display: block;
+    overflow: hidden;
+    cursor: zoom-in;
+  }
+  :global(.work-photo img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .museum-photo:hover img,
+  :global(.work-photo:hover img) {
+    transform: scale(1.02);
+  }
+  /* While the viewer is open over a photo that was clicked under hover, it stays zoomed. */
+  .museum-photo[data-held] img,
+  :global(.work-photo[data-held] img) {
+    transform: scale(1.02);
+  }
+  :global(figcaption) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+    margin-top: 14px;
+  }
+  /* Treat the number and settings as one item: flex wrapping moves the complete
+     palette before it takes space away from the settings. Only exceptionally long
+     settings wrap within this group when they cannot fit even on their own line. */
+  :global(.caption-meta) {
+    display: flex;
+    align-items: baseline;
+    gap: inherit;
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* Fill spare space beside the metadata, rather than giving the palette an auto
+     margin: a palette that wraps then starts naturally at the next line's left edge. */
+  :global(figcaption:has(.label) .caption-meta) {
+    flex-grow: 1;
+  }
+  :global(figcaption:has(.label) .mini-palette) {
+    margin-left: 0;
+  }
+  .r :global(figcaption:has(.label)) {
+    justify-content: flex-start;
+  }
+  :global(.caption-meta .n) {
+    flex-shrink: 0;
+  }
+  :global(.caption-meta .label) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .r :global(figcaption) {
+    justify-content: flex-end;
+  }
+  /* Each photograph's colour card in its caption: four small 3:1 swatches on the far
+     side of the caption, like a printer's colour bar (mirrored on right-hand photos). */
+  :global(.mini-palette) {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+    /* Same face and size as the settings, so 1cap is exactly their letter height and
+       the swatches sit on the text baseline. */
+    align-self: baseline;
+    flex-shrink: 0;
+    font: 400 12px/1 var(--font-mono);
+  }
+  .r :global(.mini-palette) {
+    order: -1;
+    margin-left: 0;
+    margin-right: auto;
+  }
+  .r :global(figcaption:has(.label) .mini-palette) {
+    order: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  :global(.mini-palette i) {
+    height: 1cap;
+    width: 3cap;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  :global(.n) {
+    font: 900 20px/1 var(--font-cn);
+    color: var(--accent);
+  }
+  /* Shooting settings: same mono face, but sized, spaced and toned to be read. */
+  :global(figcaption .label) {
+    font-size: 12px;
+    font-stretch: 100%;
+    text-transform: none;
+    line-height: 1.5;
+    color: var(--fg-muted);
+    letter-spacing: 0.06em;
+  }
+  .fin {
+    margin: 0;
+    text-align: center;
+    font: 900 clamp(36px, 4vw, 60px) / 1 var(--font-cn);
+    letter-spacing: 0.3em;
+    color: var(--fg-muted);
+  }
+
+  @media (max-width: 900px) {
+    .sheet-editorial {
+      gap: clamp(40px, 8vw, 64px);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .album-head {
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 36svh;
+      padding-bottom: 84px;
+    }
+    .head-side {
+      justify-items: stretch;
+    }
+    .head-side .flip-side {
+      display: none;
+    }
+    .sequence > .flip-end {
+      display: flex;
+      justify-content: space-between;
+    }
+    .head-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 14px;
+      justify-items: start;
+    }
+    .museum {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto;
+      height: auto;
+      min-height: 0;
+      padding-top: calc(var(--header-h) + 16px);
+    }
+    /* Phones: paging sits under the EXIF details, with the neighbouring titles. */
+    .flip-side {
+      justify-content: space-between;
+    }
+    .flip-side .flip-title {
+      display: block;
+    }
+    .flip-side .flip-btn {
+      max-width: 48%;
+    }
+    .flip-side .next {
+      flex-direction: row;
+    }
+    .museum-photo {
+      width: min(100%, calc(80svh * var(--photo-aspect)));
+    }
+    .plaque-details {
+      flex: none;
+      overflow: visible;
+    }
+    /* Phones: wider swatches, so half as tall again. */
+    .swatch {
+      aspect-ratio: 8 / 1;
+    }
+    .plaque {
+      border-left: 0;
+      padding-left: 0;
+      border-top: 1px solid var(--line);
+      padding-top: 24px;
+    }
+    .plaque :global(.plaque-title) {
+      writing-mode: horizontal-tb;
+      font-size: 32px;
+      letter-spacing: 0.2em;
+    }
+    .sequence {
+      gap: 56px;
+    }
+    .row {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 40px;
+    }
+    /* Keep number and settings together, allowing the palette to wrap first. */
+    :global(figcaption) {
+      /* First-line baselines: number, settings and colour swatches line up. */
+      align-items: baseline;
+      gap: 6px 10px;
+      margin-top: 10px;
+    }
+    .r :global(figcaption) {
+      justify-content: flex-start;
+    }
+    .r :global(.mini-palette) {
+      order: 0;
+      margin-left: auto;
+      margin-right: 0;
+    }
+    /* Phones: the same colour bar as on desktop, at the far end of the caption line,
+       sized to the phone settings text. */
+    :global(.mini-palette) {
+      font-size: 11px;
+    }
+    .r :global(.mini-palette) {
+      order: 0;
+      margin-left: auto;
+      margin-right: 0;
+    }
+    :global(.n) {
+      font-size: 17px;
+    }
+    :global(figcaption .label) {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      line-height: 1.6;
+    }
+    .row :global(.work) {
+      grid-column: 1 / -1 !important;
+      margin-top: 0 !important;
+    }
+    .tall :global(.work),
+    .pair :global(.work) {
+      width: 82%;
+    }
+    .r :global(.work),
+    .pair :global(.work:last-child) {
+      justify-self: end;
+    }
+    .pair.r :global(.work:first-child) {
+      justify-self: start;
+    }
+  }
+</style>

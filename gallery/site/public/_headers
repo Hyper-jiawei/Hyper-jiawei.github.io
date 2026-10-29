@@ -1,0 +1,11 @@
+# Cloudflare Pages response headers.
+# Scripts, styles and fonts from the build carry a content hash in their file names,
+# and photo exports live in folders named by a hash of the photo, so a URL never
+# changes its contents: browsers can keep them for a year without re-checking.
+# Pages (HTML) keep the default and are checked on every visit.
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/img/*
+  Cache-Control: public, max-age=31536000, immutable
