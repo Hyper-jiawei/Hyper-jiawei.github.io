@@ -61,6 +61,7 @@ const ordinal = (n: number) => {
 
 /** A mark's date in this language — "2月4日前后", "农历九月初九" and the like. */
 export function markWhen(when: string, lang: Lang): string {
+  if (when === "生日") return lang === "zh" ? "自定义生日" : lang === "ja" ? "設定した誕生日" : "Custom birthday";
   if (lang === "zh") return when;
   const solar = when.match(/^(\d+)月(\d+)日(前后)?$/);
   if (solar) {
