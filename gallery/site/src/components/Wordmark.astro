@@ -15,7 +15,7 @@ const { size = "28px", class: className, marks } = Astro.props;
 const h = mark.bottom - mark.top;
 ---
 
-<span class:list={["wm", className]} style={`--wm:${size};--step:${mark.subStep}px`}>
+<span class:list={["wm", className]} style={`--wm:min(${size}, calc((100vw - 2 * var(--gutter)) / ${mark.width / 1000}));--step:${mark.subStep}px`}>
   <svg
     viewBox={`0 ${mark.top} ${mark.width} ${h}`}
     style={`height:calc(var(--wm) * ${(h / 1000).toFixed(4)});aspect-ratio:${mark.width}/${h}`}

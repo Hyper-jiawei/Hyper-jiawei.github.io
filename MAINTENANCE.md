@@ -86,7 +86,7 @@ GitHub 网页单文件上传上限请以当时的 GitHub 界面为准；日常�
 - Blog 三种语言文案：`src/lib/i18n.ts`。
 - About 侧边资料：`src/pages/about.astro`；正文在 `src/content/pages/about*.md`。
 - Gallery 基本信息：`gallery/site/src/site.config.ts`。
-- Gallery 标志是原字体生成的 SVG 轮廓：脚本为 `gallery/site/scripts/build-wordmark.mjs`。本次已经生成 Hyper 标志并对齐彩蛋符号，正常维护不要改动生成数据。
+- Gallery 标志是原字体生成的 SVG 轮廓：脚本为 `gallery/site/scripts/build-wordmark.mjs`。本次已经生成 Hyper 标志、对齐彩蛋符号，并限制长字标在手机端不超出页面宽度，正常维护不要改动生成数据。
 - Gallery 的生日彩蛋默认未填个人生日；需要时将 `birthday: null` 改成 `{ month: 月, day: 日 }`。节日、节气和五连击彩蛋仍保留。
 
 修改头像时替换 `src/assets/avatar.png` 和 `gallery/site/public/images/avatar.png`。GitHub 主页资料不会实时同步到网站；改资料后请手动更新上述文件。

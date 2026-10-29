@@ -5,6 +5,13 @@ import { i18n } from '../lib/i18n';
 const { t, l } = i18n(Astro.url);
 ---
 <Base title="404" noindex>
+  <script is:inline>
+    // GitHub Pages serves one root 404 document for both mounted applications.
+    if (location.pathname.startsWith('/gallery/')) {
+      const lang = location.pathname.match(/^\/gallery\/(en|ja)(?:\/|$)/)?.[1];
+      location.replace(`/gallery/${lang ? lang + '/' : ''}404.html`);
+    }
+  </script>
   <section class="wrap grid min-h-[60vh] place-items-center py-24 text-center">
     <div class="flex flex-col items-center">
       <p class="term"><span class="prompt">$</span> cd {Astro.url.pathname}</p>
