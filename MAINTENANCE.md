@@ -1,6 +1,6 @@
 # Hyper 网站维护说明
 
-主站：https://hyper-jiawei.github.io/  
+主站：https://hyper-jiawei.github.io/
 画册：https://hyper-jiawei.github.io/gallery/
 
 本版直接沿用你提供的 Astro Blog 和 Gallery 源码，保留组件、字体、样式、动画与交互。旧 Hugo 源码和朋友的文章、照片未搬入新站。此前的 `content.json` 静态方案已被本版替换，之后使用 Markdown 更新。
