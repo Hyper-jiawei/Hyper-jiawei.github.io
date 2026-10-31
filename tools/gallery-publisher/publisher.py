@@ -189,9 +189,20 @@ def publish_album(client, branch, folder, slug, allow_update, progress):
     parsed = worker('parse', config=config, files=[p['file'] for p in inspected['photos']])
     if parsed['errors']:
         raise PublisherError('\n'.join(parsed['errors']))
+    # Preflight the current branch before selecting storage; never expose private tokens in Pages.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('hyper_gallery_storage', HERE / 'storage.py')
+    storage = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(storage)
+    current_head = client.head(branch)
+    current_tree_sha, remote_tree = client.tree(current_head)
+    incoming = sum(p['size'] for p in inspected['photos'])
+    archived = 'gallery/content/' + slug + '/_processed.json' in remote_tree
+    if archived or storage.estimate_main(remote_tree, incoming) > storage.MAIN_BUDGET:
+        return storage.publish_archived(client, branch, folder, slug, inspected, allow_update, progress, PublisherError, ROOT / 'gallery/site', find_node(), worker)
     progress('读取远端最新版本', 0, len(inspected['photos']) + 1)
-    head = client.head(branch)
-    tree_sha, remote = client.tree(head)
+    head = current_head
+    tree_sha, remote = current_tree_sha, remote_tree
     prefix = 'gallery/content/' + slug + '/'
     album_exists = any(name.startswith(prefix) for name in remote)
     if album_exists and not allow_update:

@@ -588,6 +588,31 @@ async function main() {
     if (!(await fs.stat(dir)).isDirectory() || !existsSync(indexFile)) continue;
     const fm = parseFrontMatter(await fs.readFile(indexFile, "utf8"));
     if (fm.draft === true) continue;
+    // Publisher-prepared albums need no access to private originals during Actions builds.
+    const preparedFile = path.join(dir, '_processed.json');
+    if (existsSync(preparedFile)) {
+      const album = JSON.parse(await fs.readFile(preparedFile, 'utf8'));
+      album.dir = dirName; album.slug = urlize(dirName);
+      album.title = String(fm.title ?? album.title); album.date = toDate(fm.date);
+      album.description = fm.description ?? null;
+      album.categories = Array.isArray(fm.categories) ? fm.categories.map(String) : [];
+      album.showPalette = (fm.showPalette ?? true) === true;
+      album.private = Boolean(fm.private); album.featured = Boolean(fm.featured);
+      const resources = Array.isArray(fm.resources) ? fm.resources : [];
+      album.photos = album.photos.filter(p => !resources.find(r => r.src === p.file)?.params?.hidden);
+      for (const photo of album.photos) {
+        const params = resources.find(r => r.src === photo.file)?.params ?? {};
+        photo.featured = featuredRank(params.featured); photo.description = params.description ?? null;
+      }
+      album.cover = resources.find(r => r.params?.cover)?.src ?? album.cover;
+      album.prepared = true;
+      for (const photo of album.photos) {
+        if (!/^[a-f0-9]{12}$/.test(photo.key)) throw new Error('Invalid prepared photo key');
+        await fs.cp(path.join(dir, '_preview', photo.key), path.join(OUT_DIR, photo.key), { recursive: true });
+      }
+      albums.push(album);
+      continue;
+    }
     // Hugo sorts resources by Name ascending by default.
     const files = (await fs.readdir(dir)).filter((f) => IMAGE_RE.test(f)).sort();
     if (files.length === 0) continue;
@@ -655,7 +680,7 @@ async function main() {
   const published = albums.filter((a) => a.photos.length > 0);
   published.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || a.title.localeCompare(b.title, "zh"));
 
-  const covers = published.map((album) => album.photos.find((p) => p.file === album.cover) ?? album.photos[0]);
+  const covers = published.filter(a => !a.prepared).map((album) => album.photos.find((p) => p.file === album.cover) ?? album.photos[0]);
   await pool(covers, (photo) => ensureThumbnail(photo, cache), CONCURRENCY, "thumbnails");
 
   await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true });
