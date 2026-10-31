@@ -10,6 +10,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import exifr from "exifr";
+import { featuredRank } from "./featured.mjs";
 import { IMAGE_RE, isHeic, imageInput } from "./heic-input.mjs";
 import { load as loadYaml } from "js-yaml";
 
@@ -614,7 +615,7 @@ async function main() {
         .filter((f) => !hidden.has(f)).map((file) => {
           const resource = resources.find((r) => r.src === file);
           return { file, title: path.parse(file).name, description: resource?.params?.description ?? null,
-            featured: Number(resource?.params?.featured) || 0 };
+            featured: featuredRank(resource?.params?.featured) };
         }),
     };
     albums.push(album);

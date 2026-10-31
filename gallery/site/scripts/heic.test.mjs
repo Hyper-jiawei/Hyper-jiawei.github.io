@@ -32,7 +32,7 @@ test("a complete HEIC album preserves EXIF/download bytes and generates zoom/pre
   await fs.mkdir(scripts, { recursive: true });
   await fs.mkdir(content, { recursive: true });
   await fs.symlink(path.join(site, "node_modules"), path.join(root, "node_modules"), "dir");
-  for (const name of ["build-images.mjs", "heic-input.mjs"]) await fs.copyFile(path.join(site, "scripts", name), path.join(scripts, name));
+  for (const name of ["build-images.mjs", "heic-input.mjs", "featured.mjs"]) await fs.copyFile(path.join(site, "scripts", name), path.join(scripts, name));
   await fs.copyFile(fixture, path.join(content, "手机照片.HEIC"));
   await fs.writeFile(path.join(content, "index.md"), '---\ntitle: "手机测试"\ndate: 2026-10-30\nfeatured: true\nresources:\n  - src: 手机照片.HEIC\n    params:\n      cover: true\n      featured: 1\n---\n');
   const build = () => run(process.execPath, [path.join(scripts, "build-images.mjs")], { env: { ...process.env, GALLERY_CONTENT: path.join(root, "content") }, timeout: 60000 });

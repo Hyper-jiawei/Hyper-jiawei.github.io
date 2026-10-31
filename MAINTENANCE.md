@@ -51,7 +51,7 @@ draft: false
 
 ## 上传画册照片
 
-第一辑「忆秦娥·娄山关」已发布，原图和文案在 `gallery/content/2026-10-30-loushanguan/`。当前一辑 8 张照片，封面使用 `娄山关路.JPG`，首页选五张独立作品轮播。
+第一辑「忆秦娥·娄山关」已发布，原图和文案在 `gallery/content/2026-10-30-loushanguan/`。当前一辑 8 张照片，封面使用 `娄山关路.JPG`，首页目前选五张独立作品轮播；可通过每张照片的 `params.featured: true` 自由增减，数量不限。
 
 **完整的手动更新步骤、YAML 模板、封面与精选配置、EXIF 和缩略图说明，见 [Gallery 维护指南](gallery/README.md)。** 这份指南也同步到 `Hyper-jiawei/hypers-gallery` 仓库的 README；线上实际发布仍由本仓库负责。
 

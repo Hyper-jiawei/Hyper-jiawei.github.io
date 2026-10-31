@@ -1,3 +1,4 @@
+import { selectFeaturedPhotos } from "../../scripts/featured.mjs";
 import data from "../data/gallery.json";
 import { albumPath, categoryPath, defaultLang, formatDate as formatDateIn, type Lang } from "../i18n";
 
@@ -73,8 +74,7 @@ export const photoAlbums: Album[] = allAlbums.flatMap((a) => a.photos.map((p) =>
   title: p.title, description: p.description, date: p.exif?.date ?? a.date,
   layout: "single" as const, cover: p.file, photos: [p],
 })));
-export const featuredPhotos = albums.flatMap((album) => album.photos.filter((p) => p.featured > 0)
-  .sort((a, b) => a.featured - b.featured).map((photo) => ({ album, photo }))).slice(0, 5);
+export const featuredPhotos = selectFeaturedPhotos(albums);
 
 export const coverOf = (album: Album): Photo =>
   album.photos.find((p) => p.file === album.cover) ?? album.photos[0];

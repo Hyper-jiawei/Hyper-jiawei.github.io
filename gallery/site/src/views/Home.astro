@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import AlbumIndex from "../components/AlbumIndex.astro";
-import { albums, featuredPhotos, photoUrl, categories, coverOf, srcsetOf, pick, formatDate, photoCount, numberOf, pad2, preloadFor } from "../lib/gallery";
+import { albums, featuredPhotos, photoUrl, categories, srcsetOf, pick, formatDate, photoCount, numberOf, pad2, preloadFor } from "../lib/gallery";
 import { site } from "../site.config";
 import Wordmark from "../components/Wordmark.astro";
 import VTitle from "../components/VTitle.astro";
@@ -13,17 +13,17 @@ interface Props {
 const { lang = defaultLang } = Astro.props;
 const tr = t(lang);
 
-// Prefer explicitly selected individual photos; legacy albums retain their cover fallback.
-const heroSlides = featuredPhotos.length ? featuredPhotos : albums.slice(0, 5).map((album) => ({ album, photo: coverOf(album) }));
+// Only explicitly selected photos appear in the opening carousel.
+const heroSlides = featuredPhotos;
 const cats = categories();
 const [statement] = tr.meta.bio.split(/(?<=\.)\s+/);
 const years = albums.map((a) => a.date?.slice(0, 4)).filter(Boolean).sort();
-const firstCover = heroSlides[0].photo;
+const firstCover = heroSlides[0]?.photo;
 const heroSizes = "(max-width: 900px) 100vw, 72vw";
 ---
 
-<Base lang={lang} image={pick(firstCover, 1600).url} preloadImage={{ src: pick(firstCover, 1600).url, srcset: srcsetOf(firstCover), sizes: heroSizes }}>
-  <section class="opening wrap" data-hero aria-roledescription="carousel" aria-label={tr.home.hero}>
+<Base lang={lang} image={firstCover ? pick(firstCover, 1600).url : undefined} preloadImage={firstCover ? { src: pick(firstCover, 1600).url, srcset: srcsetOf(firstCover), sizes: heroSizes } : undefined}>
+  {heroSlides.length > 0 && (<section class="opening wrap" data-hero aria-roledescription="carousel" aria-label={tr.home.hero}>
     <div class="stage">
       {
         heroSlides.map(({ album, photo: cover }, i) => {
@@ -32,9 +32,9 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
             <article class:list={["slide", { "is-active": i === 0 }]} style={`--stack-layer: ${i + 1}`} inert={i !== 0} data-slide>
               <div class="slide-text">
                 <p class="label">
-                  {album.featured ? "Featured" : "Recent"}
-                  {(album.featured ? tr.home.featured : tr.home.recent) !== (album.featured ? "Featured" : "Recent") && (
-                    <> · <span class="label-cn">{album.featured ? tr.home.featured : tr.home.recent}</span></>
+                  Featured
+                  {tr.home.featured !== "Featured" && (
+                    <> · <span class="label-cn">{tr.home.featured}</span></>
                   )}
                 </p>
                 <h2 class="slide-title">
@@ -84,7 +84,7 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
       }
       <span class="counter-total num">/ {pad2(heroSlides.length)}</span>
     </div>
-  </section>
+  </section>)}
 
   <section class="manifesto wrap reveal" id="works">
     <h1 class="statement"><Wordmark size="var(--statement-size)" /></h1>
@@ -250,8 +250,13 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
     display: flex;
     align-items: baseline;
     gap: 14px;
+    max-width: calc(100% - 2 * var(--gutter));
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
   }
   .counter button {
+    flex-shrink: 0;
     padding: 0;
     border: 0;
     background: none;
@@ -268,6 +273,7 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
     font: 900 22px/1 var(--font-cn);
   }
   .counter-total {
+    flex-shrink: 0;
     font-size: 13px;
     color: var(--fg-faint);
   }

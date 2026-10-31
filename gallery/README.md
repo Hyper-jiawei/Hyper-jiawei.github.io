@@ -31,25 +31,27 @@ resources:
   - src: "雨夜.JPG"
     params:
       cover: true
-      featured: 1
+      featured: true # 精选照片
       description: |
         这张照片的文案写在这里。
         可以换行继续写。
   - src: "路灯.JPG"
     params:
-      featured: 2
+      featured: true # 精选照片
       description: "这张照片的文案。"
 ---
 ```
 
-## 封面、首页五张精选和照片文案
+## 封面、首页精选轮播和照片文案
 
-- `title`：专辑标题；`description`：专辑简介；`date`：专辑日期。
+- `title`：专辑标题；`description`：专辑简介（可省略）；`date`：专辑日期。
 - `resources[].src`：与原图文件名完全一致，包含扩展名和大小写。
 - `params.cover: true`：专辑列表封面，一辑指定一张。第一辑使用「娄山关路.JPG」。
-- **首页轮播选择的是五张照片**，不是五个专辑。照片的 `params.featured: 1` 到 `5` 表示推荐顺序，未填写则不参与精选。优先读取日期较新的专辑，每辑按这个数字排序，最多取五张。发布新辑时，若只标两张精选，会从旧辑补足其余三张；若要全部替换，在新辑标五张。
-- 顶层 `featured: true` 用于精选标记；真正选择轮播照片的是每张图片的 `params.featured`。
-- `params.description`：该照片的文案，显示在独立照片详情页。多行文案使用 `|`，下一行缩进六个空格。
+- **首页轮播由每张照片的 `params.featured` 控制，不限制五张。** 在任意专辑的一张照片下写 `featured: true`，该照片就加入轮播；写 `featured: false` 或不写则不加入。也支持 `featured: "精选照片"`，含义相同。
+- 可以选 1 张、5 张、11 张或更多。公开专辑中所有选中的照片都会显示，按专辑日期从新到旧、同一专辑按 `resources` 顺序排列。
+- 兼容原来的 `featured: 1`、`featured: 2` 等正数，同一专辑按数字排序；不再截取前五张。未选中任何照片时不显示首页轮播，专辑列表照常显示。
+- 专辑顶层的 `featured` 可省略；它不会自动选中该辑的全部照片。实际入选只看对应图片 `params` 中的 `featured`。
+- `params.description`：该照片的文案（可省略），显示在独立照片详情页。多行文案使用 `|`，下一行缩进六个空格。
 - 照片按 `resources` 中的顺序展示；未列出的照片也会被收录，并排在后面。隐藏照片可设 `params.hidden: true`，但不要把它当成敏感原图的隐私保护。
 - 修改已发布的专辑目录名或图片文件名，会改变详情页网址，尽量保持稳定。
 
