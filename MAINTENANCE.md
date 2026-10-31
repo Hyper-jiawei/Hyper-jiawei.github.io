@@ -49,6 +49,12 @@ draft: false
 
 初始的项目文章根据你的公开仓库说明填写，欢迎替换成自己的长文；照片未虚构。
 
+## 本地一键发布（推荐）
+
+双击仓库根目录的 `打开 Gallery 发布工具.command`，在本地页面选择照片文件夹、填写信息、生成 `index.md` 后点击发布。默认描述为空，默认不写 `featured`；勾选某张照片的「首页精选」才生成 `featured: true`。
+
+完整步骤、GitHub 登录和更新同名专辑的规则见 [本地发布工具说明](tools/gallery-publisher/README.md)。生成配置保存到所选原图文件夹，发布则一次提交到 `gallery/content/<专辑目录>/`。
+
 ## 上传画册照片
 
 第一辑「忆秦娥·娄山关」已发布，原图和文案在 `gallery/content/2026-10-30-loushanguan/`。当前一辑 8 张照片，封面使用 `娄山关路.JPG`，首页目前选五张独立作品轮播；可通过每张照片的 `params.featured: true` 自由增减，数量不限。

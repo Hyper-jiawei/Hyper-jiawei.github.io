@@ -11,6 +11,12 @@
 - [网站发布记录](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/actions)
 - [完整维护说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/MAINTENANCE.md)
 
+## 本地一键发布（推荐）
+
+在网站源码目录双击 **「打开 Gallery 发布工具.command」**，选择原图文件夹，填写文案、封面和精选后生成配置，再点击发布。默认 `description: ""`，不生成 `featured`；只有勾选「首页精选」才写入 `featured: true`。无需手动上传原图或提交文件。
+
+详见 [本地发布工具使用说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/tools/gallery-publisher/README.md)。
+
 ## 下一期专辑怎么更新
 
 1. 在网站源码仓库的 `gallery/content/` 下新建文件夹，例如 `2026-11-08-shanghai`。

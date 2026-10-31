@@ -32,6 +32,8 @@ jobs:
         run: npm test
       - name: Test Gallery
         run: npm test --prefix gallery/site
+      - name: Test local Gallery publisher
+        run: python3 -m unittest discover -s tools/gallery-publisher/tests -v
       - name: Build Blog and search index
         run: npm run build
       - name: Build Gallery

@@ -8,3 +8,6 @@ dist/
 *.log
 gallery/site/public/img/
 gallery/site/src/data/gallery.json
+
+__pycache__/
+*.pyc
