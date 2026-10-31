@@ -301,7 +301,7 @@ export function initLightbox(): () => void {
           const update = () => {
             const source = pswp.currSlide?.data.element as HTMLAnchorElement | undefined;
             if (!source) return;
-            link.href = source.href;
+            link.href = source.dataset.downloadSrc ?? source.href;
             link.download = source.dataset.downloadName ?? "original";
           };
           pswp.on("change", update);

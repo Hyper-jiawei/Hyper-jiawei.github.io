@@ -10,6 +10,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import exifr from "exifr";
+import { IMAGE_RE, isHeic, imageInput } from "./heic-input.mjs";
 import { load as loadYaml } from "js-yaml";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -36,7 +37,6 @@ const THUMBNAIL_PRESETS = [
   { edge: 1600, quality: 80 },
 ];
 const THUMBNAIL_VERSION = 1;
-const IMAGE_RE = /\.(jpe?g|png|webp|tiff?)$/i;
 const CONCURRENCY = Math.max(2, Math.min(6, os.cpus().length - 2));
 
 sharp.concurrency(2);
@@ -446,13 +446,19 @@ async function processImage(file, cache) {
   }
   const dir = path.join(OUT_DIR, key);
   const cached = cache[key];
+  const heic = isHeic(file);
+  // Decode lazily: cached HEIC previews need no second decode on local rebuilds.
+  let input;
+  const getInput = async () => input ??= await imageInput(file);
+  const displayUrl = `/img/${key}/full-resolution.jpg`;
+  const displayPath = path.join(ROOT, "public", displayUrl);
   // Publish the source bytes as well as the responsive exports, including EXIF.
   const originalUrl = `/img/${key}/original${path.extname(file).toLowerCase()}`;
   await fs.mkdir(dir, { recursive: true });
   const originalPath = path.join(ROOT, "public", originalUrl);
   if (!existsSync(originalPath)) await fs.copyFile(file, originalPath);
 
-  if (cached && cached.srcset.every((s) => existsSync(path.join(ROOT, "public", s.url)))) {
+  if (cached && (!heic || existsSync(displayPath)) && cached.srcset.every((s) => existsSync(path.join(ROOT, "public", s.url)))) {
     if (cached.tone?.v !== TONE_VERSION) cached.tone = await toneOf(path.join(ROOT, "public", cached.srcset[0].url));
     if (cached.palette?.v !== PALETTE_VERSION) cached.palette = await paletteOf(path.join(ROOT, "public", cached.srcset[0].url));
     // Add any size introduced since this photo was cached, without re-encoding the rest.
@@ -460,7 +466,7 @@ async function processImage(file, cache) {
     const have = new Set(cached.srcset.map((v) => v.url.match(/\/(\d+)\.webp$/)?.[1]));
     const missing = WIDTHS.filter((w) => w < longest && !have.has(String(w)));
     if (missing.length) {
-      const base = sharp(file, { limitInputPixels: false }).rotate();
+      const base = sharp(await getInput(), { limitInputPixels: false }).rotate();
       for (const box of missing) {
         const scale = Math.min(1, box / longest);
         const w = Math.round(cached.width * scale);
@@ -475,12 +481,14 @@ async function processImage(file, cache) {
     return { key, ...cached };
   }
 
-  const base = sharp(file, { limitInputPixels: false }).rotate();
-  const meta = await sharp(file, { limitInputPixels: false }).metadata();
+  const base = sharp(await getInput(), { limitInputPixels: false }).rotate();
+  const meta = await sharp(await getInput(), { limitInputPixels: false }).metadata();
   const rotated = (meta.orientation ?? 1) >= 5;
   const width = rotated ? meta.height : meta.width;
   const height = rotated ? meta.width : meta.height;
   const longest = Math.max(width, height);
+  // Browser-compatible full-pixel version for zooming; original HEIC stays downloadable.
+  if (heic) await base.clone().jpeg({ quality: 96, chromaSubsampling: "4:4:4" }).toFile(displayPath);
 
   await fs.mkdir(dir, { recursive: true });
   const srcset = [];
@@ -514,7 +522,8 @@ async function processImage(file, cache) {
   const tone = await toneOf(small);
   const palette = await paletteOf(small);
   const original = { url: originalUrl, w: width, h: height };
-  const entry = { width, height, color, lqip, srcset, exif, tone, palette, original };
+  const entry = { width, height, color, lqip, srcset, exif, tone, palette, original,
+    ...(heic ? { displayOriginal: { url: displayUrl, w: width, h: height } } : {}) };
   cache[key] = entry;
   return { key, ...entry };
 }
@@ -627,7 +636,9 @@ async function main() {
     CONCURRENCY,
   );
 
-  for (const album of albums) album.photos = album.photos.filter((p) => !p.failed);
+  // A failed conversion must fail deployment rather than silently remove a user's photo.
+  const failures = jobs.filter(({ photo }) => photo.failed);
+  if (failures.length) throw new Error(`${failures.length} photo(s) could not be processed; fix the files listed above and rebuild.`);
 
   // "Actual size": how big each photo prints, in CSS pixels. A file can carry its own size;
   // otherwise the album's size applies. With neither, the album falls back to the gallery.

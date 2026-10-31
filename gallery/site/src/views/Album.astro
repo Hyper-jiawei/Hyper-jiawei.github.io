@@ -53,12 +53,13 @@ const exifRows = exif
   : [];
 
 const pswpData = (p: Photo) => {
-  const big = p.original ?? largest(p);
+  const big = p.displayOriginal ?? p.original ?? largest(p);
   return {
     href: big.url,
     "data-pswp-width": big.w,
     "data-pswp-height": big.h,
     "data-download-name": p.file,
+    "data-download-src": p.original.url,
     "data-title": album.title,
     "data-exif": JSON.stringify(p.exif ?? {}),
   };

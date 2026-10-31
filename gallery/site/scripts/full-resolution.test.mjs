@@ -162,3 +162,27 @@ test("a click queued before viewer readiness opens exactly once after initializa
   assert.equal(instance.queuedOpen.dataSource.gallery, instance.options.gallery);
   assert.equal(typeof instance.options.pswpModule, "function");
 });
+
+
+test("HEIC zoom loads the compatible JPEG while download keeps the original HEIC", () => {
+  const { instance, downloads } = viewer();
+  const anchor = instance.pswp.currSlide.data.element;
+  anchor.href = "/full-resolution.jpg";
+  anchor.dataset.downloadSrc = "/original.heic";
+  anchor.dataset.downloadName = "手机照片.HEIC";
+  const registered = [];
+  instance.pswp.ui = { registerElement: (options) => registered.push(options) };
+  instance.emit("uiRegister");
+  const link = {};
+  const callbacks = {};
+  const pswp = { currSlide: instance.pswp.currSlide, on: (event, fn) => callbacks[event] = fn };
+  registered.find((r) => r.name === "download").onInit(link, pswp);
+  assert.equal(link.href, "/original.heic");
+  assert.equal(link.download, "手机照片.HEIC");
+  instance.emit("openingAnimationEnd");
+  assert.equal(downloads[0].src, "/full-resolution.jpg");
+  // JPEG and existing links without a separate download source still work.
+  delete anchor.dataset.downloadSrc;
+  callbacks.change();
+  assert.equal(link.href, "/full-resolution.jpg");
+});

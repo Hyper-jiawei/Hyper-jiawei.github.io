@@ -30,6 +30,8 @@ export interface Photo {
   lqip: string;
   srcset: Variant[];
   original: Variant;
+  /** Full-pixel JPEG for HEIC zooming; download still uses original. */
+  displayOriginal?: Variant;
   thumbnail?: Variant;
   thumbnails?: Variant[];
   exif: Exif | null;
