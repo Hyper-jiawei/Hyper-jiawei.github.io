@@ -20,6 +20,9 @@ export interface Exif {
 
 export interface Photo {
   file: string;
+  title: string;
+  description: string | null;
+  featured: number;
   key: string;
   width: number;
   height: number;
@@ -39,6 +42,7 @@ export interface Photo {
 
 export interface Album {
   dir: string;
+  parentSlug?: string;
   slug: string;
   title: string;
   description: string | null;
@@ -58,6 +62,17 @@ export const allAlbums = (data.albums as Album[]).slice();
 
 /** Albums shown in listings, feeds and navigation. */
 export const albums = allAlbums.filter((a) => !a.private);
+
+/** Individual photo pages reuse the original single-photo museum layout. */
+export const photoSlug = (p: Photo) => encodeURIComponent(p.title);
+export const photoUrl = (a: Album, p: Photo, lang: Lang = defaultLang) => albumPath(lang, a.slug) + photoSlug(p) + "/";
+export const photoAlbums: Album[] = allAlbums.flatMap((a) => a.photos.map((p) => ({
+  ...a, parentSlug: a.slug, slug: a.slug + "/" + p.title,
+  title: p.title, description: p.description, date: p.exif?.date ?? a.date,
+  layout: "single" as const, cover: p.file, photos: [p],
+})));
+export const featuredPhotos = albums.flatMap((album) => album.photos.filter((p) => p.featured > 0)
+  .sort((a, b) => a.featured - b.featured).map((photo) => ({ album, photo }))).slice(0, 5);
 
 export const coverOf = (album: Album): Photo =>
   album.photos.find((p) => p.file === album.cover) ?? album.photos[0];
@@ -112,9 +127,10 @@ export function categories() {
 }
 
 export function neighbours(album: Album) {
-  const i = albums.indexOf(album);
+  const list = album.parentSlug ? photoAlbums.filter((a) => a.parentSlug === album.parentSlug) : albums;
+  const i = list.findIndex((a) => a.slug === album.slug);
   if (i < 0) return { newer: undefined, older: undefined };
-  return { newer: albums[i - 1], older: albums[i + 1] };
+  return { newer: list[i - 1], older: list[i + 1] };
 }
 
 export const photoCount = albums.reduce((n, a) => n + a.photos.length, 0);
@@ -126,7 +142,7 @@ export function exifLine(e: Exif | null) {
 
 /** Catalogue number, counting up from the oldest public album ("No. 001"). */
 export function numberOf(album: Album) {
-  const i = albums.indexOf(album);
+  const i = albums.findIndex((a) => a.slug === (album.parentSlug ?? album.slug));
   return i < 0 ? "" : String(albums.length - i).padStart(3, "0");
 }
 

@@ -1,0 +1,9 @@
+---
+import Album from "../../../views/Album.astro";
+import { photoAlbums } from "../../../lib/gallery";
+export function getStaticPaths() {
+  return photoAlbums.map((album) => ({ params: { album: album.parentSlug, photo: album.photos[0].title }, props: { album } }));
+}
+const { album } = Astro.props;
+---
+<Album album={album} lang="en" />

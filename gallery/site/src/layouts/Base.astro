@@ -15,6 +15,7 @@ import eggArrival from "../lib/egg-arrival.js?raw";
 
 interface Props {
   title?: string;
+  backTo?: string;
   description?: string;
   image?: string;
   noindex?: boolean;
@@ -29,7 +30,7 @@ interface Props {
   alternates?: boolean;
 }
 
-const { title, description, image, noindex = false, hero = false, tone, preloadImage, lang = defaultLang, alternates = true } = Astro.props;
+const { backTo, title, description, image, noindex = false, hero = false, tone, preloadImage, lang = defaultLang, alternates = true } = Astro.props;
 const tr = t(lang);
 const fullTitle = title ? `${title} · ${site.title}` : site.title;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -37,7 +38,7 @@ const path = decodeURI(Astro.url.pathname).replace(/^\/gallery(?=\/|$)/, "") || 
 // The page without its language prefix, so the rules below read the same in every language.
 const bare = path.startsWith(`/${lang}/`) && lang !== defaultLang ? path.slice(lang.length + 1) : path;
 // Where "back" goes when there is no earlier page on this site to return to.
-const backFallback = bare === "/" ? null : /^\/categories\//.test(bare) ? categoriesPath(lang) : homePath(lang);
+const backFallback = backTo ?? (bare === "/" ? null : /^\/categories\//.test(bare) ? categoriesPath(lang) : homePath(lang));
 const ogImage = image ? new URL(image, Astro.site).href : undefined;
 const ogLocale: Record<Lang, string> = { zh: "zh_CN", en: "en_US", ja: "ja_JP" };
 ---

@@ -129,7 +129,7 @@ async function readExif(file) {
       aperture: e.FNumber ? `f/${fmtNumber(e.FNumber, 1)}` : null,
       shutter: fmtShutter(e.ExposureTime),
       iso: e.ISO ? `ISO ${e.ISO}` : null,
-      date: e.DateTimeOriginal instanceof Date ? e.DateTimeOriginal.toISOString().slice(0, 10) : null,
+      date: e.DateTimeOriginal instanceof Date ? [e.DateTimeOriginal.getFullYear(), String(e.DateTimeOriginal.getMonth() + 1).padStart(2, "0"), String(e.DateTimeOriginal.getDate()).padStart(2, "0")].join("-") : null,
       description: e.ImageDescription ? String(e.ImageDescription).trim() : null,
     };
     return Object.values(exif).some(Boolean) ? exif : null;
@@ -601,7 +601,12 @@ async function main() {
       featured: Boolean(fm.featured ?? params.featured),
       private: Boolean(fm.private ?? params.private),
       cover: coverSrc ?? files.find((f) => /feature/i.test(f)) ?? files[0],
-      photos: files.filter((f) => !hidden.has(f)).map((file) => ({ file })),
+      photos: [...resources.map((r) => r.src).filter((f) => files.includes(f)), ...files.filter((f) => !resources.some((r) => r.src === f))]
+        .filter((f) => !hidden.has(f)).map((file) => {
+          const resource = resources.find((r) => r.src === file);
+          return { file, title: path.parse(file).name, description: resource?.params?.description ?? null,
+            featured: Number(resource?.params?.featured) || 0 };
+        }),
     };
     albums.push(album);
     for (const photo of album.photos) jobs.push({ album, photo });

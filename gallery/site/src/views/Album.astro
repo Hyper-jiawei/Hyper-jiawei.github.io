@@ -88,6 +88,7 @@ if (!single) {
 
 <Base
   lang={lang}
+  backTo={album.parentSlug ? albumUrl({ ...album, slug: album.parentSlug }, lang) : undefined}
   title={album.title}
   description={tr.album.description(album.title, formatDate(album.date, lang), album.photos.length)}
   image={pick(cover, 1600).url}
@@ -124,7 +125,7 @@ if (!single) {
               <VTitle tag="h1" class="plaque-title" text={album.title} />
             </div>
             <div class="plaque-body">
-              <p class="date num">{formatDate(album.date, lang)}</p>
+              <p class="date num">{formatDate(photo.exif?.date ?? album.date, lang)}</p>
               <p class="cats label">
                 {album.categories.map((c, i) => (
                   <>
@@ -135,6 +136,7 @@ if (!single) {
                   </>
                 ))}
               </p>
+              {album.description && <p class="photo-story">{album.description}</p>}
               {exifRows.length > 0 && (
                 <dl class="exif">
                   {exifRows.map(([k, v]) => (
@@ -273,6 +275,7 @@ if (!single) {
 </Base>
 
 <style>
+  .photo-story { white-space: pre-line; font: 400 14px/1.9 var(--font-sans); color: var(--fg-muted); margin-block: 24px; }
   /* ---------- Single photograph, hung like a museum piece ---------- */
   .museum {
     display: grid;

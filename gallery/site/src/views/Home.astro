@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import AlbumIndex from "../components/AlbumIndex.astro";
-import { albums, categories, coverOf, srcsetOf, pick, albumUrl, formatDate, photoCount, numberOf, pad2, preloadFor } from "../lib/gallery";
+import { albums, featuredPhotos, photoUrl, categories, coverOf, srcsetOf, pick, formatDate, photoCount, numberOf, pad2, preloadFor } from "../lib/gallery";
 import { site } from "../site.config";
 import Wordmark from "../components/Wordmark.astro";
 import VTitle from "../components/VTitle.astro";
@@ -13,15 +13,12 @@ interface Props {
 const { lang = defaultLang } = Astro.props;
 const tr = t(lang);
 
-// Featured albums open the exhibition, followed by the most recent multi-photo albums.
-const heroAlbums = [
-  ...albums.filter((a) => a.featured),
-  ...albums.filter((a) => !a.featured && a.layout === "gallery"),
-].slice(0, 5);
+// Prefer explicitly selected individual photos; legacy albums retain their cover fallback.
+const heroSlides = featuredPhotos.length ? featuredPhotos : albums.slice(0, 5).map((album) => ({ album, photo: coverOf(album) }));
 const cats = categories();
 const [statement] = tr.meta.bio.split(/(?<=\.)\s+/);
 const years = albums.map((a) => a.date?.slice(0, 4)).filter(Boolean).sort();
-const firstCover = coverOf(heroAlbums[0]);
+const firstCover = heroSlides[0].photo;
 const heroSizes = "(max-width: 900px) 100vw, 72vw";
 ---
 
@@ -29,8 +26,8 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
   <section class="opening wrap" data-hero aria-roledescription="carousel" aria-label={tr.home.hero}>
     <div class="stage">
       {
-        heroAlbums.map((album, i) => {
-          const cover = coverOf(album);
+        heroSlides.map(({ album, photo: cover }, i) => {
+          const href = photoUrl(album, cover, lang);
           return (
             <article class:list={["slide", { "is-active": i === 0 }]} style={`--stack-layer: ${i + 1}`} inert={i !== 0} data-slide>
               <div class="slide-text">
@@ -41,7 +38,7 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
                   )}
                 </p>
                 <h2 class="slide-title">
-                  <a href={albumUrl(album, lang)} data-astro-prefetch="hover" {...preloadFor(album)}><VTitle text={album.title} /></a>
+                  <a href={href} data-astro-prefetch="hover" {...preloadFor({ ...album, layout: "single", photos: [cover] })}><VTitle text={cover.title ?? album.title} /></a>
                 </h2>
                 <p class="slide-meta num">
                   <span>°{numberOf(album)}</span>
@@ -49,7 +46,7 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
                   <span class="cats">{album.categories.map((c) => categoryName(c, lang)).join(" · ")}</span>
                 </p>
               </div>
-              <a class="slide-media" href={albumUrl(album, lang)} aria-label={album.title} style={`background-color:${cover.color}`} data-astro-prefetch="hover" data-vt-key={album.layout === "gallery" ? undefined : cover.key} {...preloadFor(album)}>
+              <a class="slide-media" href={href} aria-label={cover.title ?? album.title} style={`background-color:${cover.color}`} data-astro-prefetch="hover" data-vt-key={album.layout === "gallery" ? undefined : cover.key} {...preloadFor({ ...album, layout: "single", photos: [cover] })}>
                 <img
                   class="fade"
                   data-deferred-src={pick(cover, 1600).url}
@@ -79,13 +76,13 @@ const heroSizes = "(max-width: 900px) 100vw, 72vw";
     </div>
     <div class="counter" role="tablist">
       {
-        heroAlbums.map((a, i) => (
+        heroSlides.map(({ photo: a }, i) => (
           <button type="button" class="num" data-dot aria-current={String(i === 0)} aria-label={a.title}>
             {pad2(i + 1)}
           </button>
         ))
       }
-      <span class="counter-total num">/ {pad2(heroAlbums.length)}</span>
+      <span class="counter-total num">/ {pad2(heroSlides.length)}</span>
     </div>
   </section>
 

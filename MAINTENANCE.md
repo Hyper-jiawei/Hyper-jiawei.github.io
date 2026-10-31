@@ -51,31 +51,11 @@ draft: false
 
 ## 上传画册照片
 
-画册目前有五个明确标注“待上传”的空白占位，保留原首页轮播、分类、灯箱和版式。你可以替换占位，也可以新建相册。
+第一辑「忆秦娥·娄山关」已发布，原图和文案在 `gallery/content/2026-10-30-loushanguan/`。当前一辑 8 张照片，封面使用 `娄山关路.JPG`，首页选五张独立作品轮播。
 
-1. 在 `gallery/content/` 下创建文件夹，例如 `shanghai-walk`。
-2. 上传 JPG / JPEG / PNG / WebP / TIFF 照片到这个文件夹。
-3. 在同一文件夹创建 `index.md`：
+**完整的手动更新步骤、YAML 模板、封面与精选配置、EXIF 和缩略图说明，见 [Gallery 维护指南](gallery/README.md)。** 这份指南也同步到 `Hyper-jiawei/hypers-gallery` 仓库的 README；线上实际发布仍由本仓库负责。
 
-```yaml
----
-title: "上海散步"
-date: 2026-10-29
-categories: ["日常", "人文"]
-featured: true
-description: "一次散步的记录。"
-resources:
-  - src: photo-01.jpg
-    params:
-      cover: true
----
-```
-
-`featured: true` 为首页轮播候选，最多展示五辑；未设置时也可能被选为近作。相册内的照片自动读取、排序并生成 WebP 尺寸、缩略图和 EXIF。封面文件名须与 `resources` 中一致。移除占位时删除对应 `placeholder-*` 文件夹及 `blank.jpg`，或者直接替换照片和元数据；上传真实照片后删掉 `placeholder: true`。
-
-单图布局：`layout: single-big-photo`；默认是多图画册。保留原框架的 `actual` 实际尺寸布局、颜色卡、缩放、原图下载等功能，详细说明见 `gallery/site/README.md`。
-
-GitHub 网页单文件上传上限请以当时的 GitHub 界面为准；日常建议将照片长边控制在约 3000px，避免过大的原图。原图会随画册公开，并可下载；发布前检查 EXIF 中是否有不想公开的信息。
+你可直接上传 6–10 MB 原图，无需手动压缩。自动流程生成 WebP 预览图及封面缩略图，保留原图供放大与下载。照片标题取自文件名，点击专辑内照片进入独立详情页，显示拍摄日期、相机参数、色块和文案。注意整站发布体积仍受 1 GB 限制。
 
 ## 修改名称与个人资料
 
