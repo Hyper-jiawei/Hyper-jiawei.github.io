@@ -1,4 +1,4 @@
-"""Capacity-aware private original archives; only browser-ready previews reach Pages."""
+"""Capacity-aware public original archives; only browser-ready previews reach Pages."""
 import base64
 import concurrent.futures
 import threading
@@ -34,12 +34,12 @@ def choose_archive(client, incoming, error):
     owner = client.repository.split('/')[0]
     archives = sorted((r for r in repositories if r['owner']['login'].lower() == owner.lower() and re.fullmatch(r'gallery\d{2,}', r['name'])), key=lambda r: int(r['name'][7:]))
     for repo in reversed(archives):
-        if repo['private'] and repo.get('size', 0) * 1024 + incoming < ARCHIVE_BUDGET:
+        if not repo['private'] and repo.get('size', 0) * 1024 + incoming < ARCHIVE_BUDGET:
             return repo['full_name'], repo['default_branch']
     number = max([int(r['name'][7:]) for r in archives] + [0]) + 1
-    repo = client.request('POST', '/user/repos', {'name': f'gallery{number:02d}', 'private': True, 'auto_init': True, 'description': 'Hyper Gallery private originals and album configuration'})
-    if not repo.get('private'):
-        raise error('原图存储仓库不是私人仓库，已停止上传。')
+    repo = client.request('POST', '/user/repos', {'name': f'gallery{number:02d}', 'private': False, 'auto_init': True, 'description': 'Hyper Gallery public originals and album configuration'})
+    if repo.get('private', True):
+        raise error('原图存储仓库不是公开仓库，已停止上传。')
     return repo['full_name'], repo['default_branch']
 
 
@@ -114,7 +114,7 @@ def publish_archived(client, branch, folder, slug, inspected, allow_update, prog
         album = json.loads((root / 'src/data/gallery.json').read_text())['albums'][0]
         public = {'index.md': originals['index.md']}
         for photo in album['photos']:
-            # Public full view stays at <=3000px; camera originals stay in the private archive.
+            # Public full view stays at <=3000px; camera originals stay in the public archive.
             photo['displayOriginal'] = photo['srcset'][-1]
             for asset in (root / 'public/img' / photo['key']).iterdir():
                 if asset.suffix.lower() == '.webp':
@@ -123,12 +123,12 @@ def publish_archived(client, branch, folder, slug, inspected, allow_update, prog
         _, tree = client.tree(head)
         other_bytes = sum(e.get('size', 0) for p, e in tree.items() if p.startswith('gallery/') and not p.startswith(prefix) and e['type'] == 'blob')
         if other_bytes * 2 + sum(map(len, public.values())) > MAIN_BUDGET:
-            raise error('主站预览文件也接近容量预算，未上传。仅拆分私人原图仓库已不足，需要另接公共图片托管；不会继续堆满 Pages。')
+            raise error('主站预览文件也接近容量预算，未上传。仅拆分原图仓库已不足，需要另接公共图片托管；不会继续堆满 Pages。')
         repo_name, archive_branch = choose_archive(client, sum(map(len, originals.values())), error)
         archive = type(client)(client.token, repo_name)
         archive_head = commit_files(archive, archive_branch, originals, prefix, True, progress, error)
         for photo in album['photos']:
-            photo['original']['url'] = 'https://github.com/' + repo_name + '/blob/' + archive_head + '/' + urllib.parse.quote(prefix + photo['file'])
+            photo['original']['url'] = 'https://raw.githubusercontent.com/' + repo_name + '/' + archive_head + '/' + urllib.parse.quote(prefix + photo['file'])
         album['archive'] = {'repository': repo_name, 'commit': archive_head}
         public['_processed.json'] = json.dumps(album, ensure_ascii=False).encode()
         # Verify source files have not changed during conversion/upload.

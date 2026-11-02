@@ -54,5 +54,10 @@ const tr = t(lang);
         ))}
       </span>
     )}
+    {p.description && <p class="work-description">{p.description}</p>}
   </figcaption>
 </figure>
+
+<style>
+  .work-description { flex: 0 0 100%; order: 2; margin: 2px 0 0; white-space: pre-line; overflow-wrap: anywhere; font: 400 14px/1.9 var(--font-sans); color: var(--fg-muted); }
+</style>

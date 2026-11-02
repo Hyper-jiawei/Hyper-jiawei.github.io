@@ -100,6 +100,7 @@ if (!single) {
   {
     single ? (
       <section class="museum wrap" data-gallery>
+        <div class="museum-stage" style={`--photo-aspect:${aspect(photo)}`} >
         <a class="museum-photo" style={`--photo-aspect:${aspect(photo)}`} {...pswpData(photo)}>
           <img
             src={pick(photo, 1600).url}
@@ -116,6 +117,23 @@ if (!single) {
             data-vt-current={photo.key}
           />
         </a>
+          <nav class="photo-paging" aria-label={tr.album.flip}>
+          {newer ? (
+            <a class="flip-btn prev" href={albumUrl(newer, lang)} data-flip="prev" data-astro-prefetch="load" {...preloadFor(newer)} title={`${tr.album.prev} · ${newer.title}`}>
+              <span class="arrow" aria-hidden="true">←</span>
+              <span class="flip-label label">{tr.album.prev}</span>
+              <span class="flip-title">{newer.title}</span>
+            </a>
+          ) : <span />}
+          {older ? (
+            <a class="flip-btn next" href={albumUrl(older, lang)} data-flip="next" data-astro-prefetch="load" {...preloadFor(older)} title={`${tr.album.next} · ${older.title}`}>
+              <span class="flip-title">{older.title}</span>
+              <span class="flip-label label">{tr.album.next}</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </a>
+          ) : <span />}
+        </nav>
+        </div>
         <aside class="plaque">
           <div class="plaque-scrollbar" role="scrollbar" tabindex="0" aria-label={tr.album.scrollInfo} aria-controls="photo-details" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" hidden>
             <span class="plaque-scrollbar-thumb" aria-hidden="true" />
@@ -158,24 +176,10 @@ if (!single) {
                   </div>
                 </div>
               )}
+              <a class="download-original label" href={photo.original.url} download={photo.file} data-original-download>{tr.lightbox.download} ↓</a>
             </div>
           </div>
-          <nav class="flip flip-side" aria-label={tr.album.flip}>
-          {newer ? (
-            <a class="flip-btn prev" href={albumUrl(newer, lang)} data-flip="prev" data-astro-prefetch="load" {...preloadFor(newer)} title={`${tr.album.prev} · ${newer.title}`}>
-              <span class="arrow" aria-hidden="true">←</span>
-              <span class="flip-label label">{tr.album.prev}</span>
-              <span class="flip-title">{newer.title}</span>
-            </a>
-          ) : <span />}
-          {older ? (
-            <a class="flip-btn next" href={albumUrl(older, lang)} data-flip="next" data-astro-prefetch="load" {...preloadFor(older)} title={`${tr.album.next} · ${older.title}`}>
-              <span class="flip-title">{older.title}</span>
-              <span class="flip-label label">{tr.album.next}</span>
-              <span class="arrow" aria-hidden="true">→</span>
-            </a>
-          ) : <span />}
-        </nav>
+
         </aside>
 
       </section>
@@ -276,6 +280,26 @@ if (!single) {
 </Base>
 
 <style>
+  .museum-stage {
+    position: relative;
+    justify-self: center;
+    width: min(100%, calc((100svh - var(--header-h) - 56px) * var(--photo-aspect) + 104px));
+    padding-inline: 52px;
+    min-width: 0;
+  }
+  .museum-stage .museum-photo { width: 100%; }
+  .photo-paging { display: contents; }
+  .photo-paging .flip-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; }
+  .photo-paging .prev { left: 0; }
+  .photo-paging .next { right: 0; }
+  .photo-paging .flip-title, .photo-paging .flip-label { display: none; }
+  .download-original { display: inline-flex; justify-content: center; align-items: center; min-height: 40px; padding: 10px 14px; border: 1px solid var(--line); color: var(--fg-muted); }
+  .download-original:hover { color: var(--bg); background: var(--fg); }
+  @media (max-width: 900px) {
+    .museum-stage { width: min(100%, calc(80svh * var(--photo-aspect) + 80px)); padding-inline: 40px; }
+    .photo-paging .arrow { width: 32px; height: 40px; }
+  }
+
   .photo-story { white-space: pre-line; font: 400 14px/1.9 var(--font-sans); color: var(--fg-muted); margin-block: 24px; }
   /* ---------- Single photograph, hung like a museum piece ---------- */
   .museum {

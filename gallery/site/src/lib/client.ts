@@ -1,3 +1,4 @@
+import { installOriginalDownloads } from "./original-download";
 // Client-side behaviour, re-run after every navigation (astro:page-load).
 import { initPlaqueScrollbar } from "./plaque-scrollbar";
 import { installListPageCache } from "./list-page-cache";
@@ -9,6 +10,7 @@ import { langOf, localeSwitch, type Lang } from "../i18n";
 import { applySizeScale, layoutPrinted } from "./screen";
 
 installListPageCache();
+installOriginalDownloads();
 
 // Touch screens never fire "hover", so on-site links used to start loading only on
 // click. Begin fetching the page (and its first photograph) as soon as a finger or

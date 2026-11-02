@@ -19,7 +19,7 @@ class ArchiveClient(FakeGitHub):
         self.token, self.repository = token, repository
     def request(self, method, path, payload=None):
         if method == 'GET':
-            return [{'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery01', 'full_name': 'Hyper-jiawei/gallery01', 'private': True, 'size': 1, 'default_branch': 'main'}]
+            return [{'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery01', 'full_name': 'Hyper-jiawei/gallery01', 'private': False, 'size': 1, 'default_branch': 'main'}]
         raise AssertionError(path)
     def repo(self, method, path, payload=None):
         if path == '/git/blobs':
@@ -32,17 +32,17 @@ class StorageTests(unittest.TestCase):
     def test_budget_accounts_for_derivatives_and_public_previews(self):
         tree = {'gallery/content/a/a.jpg': {'size': 100}, 'gallery/content/b/_preview/key/960.webp': {'size': 20}}
         self.assertEqual(s.estimate_main(tree, 50), 470)
-    def test_reuses_private_archive_and_rotates_past_full_or_public_repos(self):
+    def test_reuses_public_archive_and_rotates_past_full_or_private_repos(self):
         client = ArchiveClient()
         self.assertEqual(s.choose_archive(client, 100, p.PublisherError)[0], 'Hyper-jiawei/gallery01')
         class Full(ArchiveClient):
             def request(self, method, path, payload=None):
                 if method == 'GET':
-                    return [{'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery01', 'full_name': 'Hyper-jiawei/gallery01', 'private': True, 'size': s.ARCHIVE_BUDGET // 1024, 'default_branch': 'main'}, {'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery02', 'private': False, 'size': 0}]
-                assert payload['name'] == 'gallery03' and payload['private'] is True
-                return {'full_name': 'Hyper-jiawei/gallery03', 'private': True, 'default_branch': 'main'}
+                    return [{'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery01', 'full_name': 'Hyper-jiawei/gallery01', 'private': False, 'size': s.ARCHIVE_BUDGET // 1024, 'default_branch': 'main'}, {'owner': {'login': 'Hyper-jiawei'}, 'name': 'gallery02', 'private': True, 'size': 0}]
+                assert payload['name'] == 'gallery03' and payload['private'] is False
+                return {'full_name': 'Hyper-jiawei/gallery03', 'private': False, 'default_branch': 'main'}
         self.assertEqual(s.choose_archive(Full(), 100, p.PublisherError)[0], 'Hyper-jiawei/gallery03')
-    def test_private_publish_keeps_originals_private_and_emits_only_webp_and_manifest_in_main(self):
+    def test_public_archive_preserves_original_bytes_and_main_only_has_previews(self):
         ArchiveClient.changes = {}
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)
@@ -72,5 +72,5 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr.decode())
             album = json.loads((root / 'src/data/gallery.json').read_text())['albums'][0]
             self.assertTrue(album['prepared'])
-            self.assertTrue(album['photos'][0]['original']['url'].startswith('https://github.com/Hyper-jiawei/gallery01/'))
+            self.assertTrue(album['photos'][0]['original']['url'].startswith('https://raw.githubusercontent.com/Hyper-jiawei/gallery01/'))
             self.assertTrue((root / 'public' / album['photos'][0]['displayOriginal']['url'].lstrip('/')).exists())
