@@ -1,0 +1,1 @@
+{"name":"Hyper Gallery 发布工具","short_name":"Gallery 发布","start_url":"/gallery/publish/","scope":"/gallery/publish/","display":"standalone","background_color":"#171b18","theme_color":"#171b18","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"},{"src":"./icon.png","sizes":"180x180","type":"image/png","purpose":"any"}]}

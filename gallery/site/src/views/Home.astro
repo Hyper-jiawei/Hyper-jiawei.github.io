@@ -46,11 +46,13 @@ const heroSizes = firstCover ? stageSizes(firstCover) : "100vw";
                   <span class="cats">{album.categories.map((c) => categoryName(c, lang)).join(" · ")}</span>
                 </p>
               </div>
-              <a class="slide-media" href={href} aria-label={cover.title ?? album.title} style="background-color:transparent" data-astro-prefetch="hover" data-vt-key={album.layout === "gallery" ? undefined : cover.key} {...preloadFor({ ...album, layout: "single", photos: [cover] })}>
+              <a class="slide-media" href={href} aria-label={cover.title ?? album.title} style={`background:transparent url("${cover.lqip}") center / contain no-repeat`} data-astro-prefetch="hover" data-vt-key={album.layout === "gallery" ? undefined : cover.key} {...preloadFor({ ...album, layout: "single", photos: [cover] })}>
                 <img
                   class="fade"
-                  data-deferred-src={pick(cover, 1600).url}
-                  data-deferred-srcset={srcsetOf(cover)}
+                  src={i === 0 ? pick(cover, 1600).url : undefined}
+                  srcset={i === 0 ? srcsetOf(cover) : undefined}
+                  data-deferred-src={i === 0 ? undefined : pick(cover, 1600).url}
+                  data-deferred-srcset={i === 0 ? undefined : srcsetOf(cover)}
                   sizes={stageSizes(cover)}
                   alt=""
                   loading={i === 0 ? "eager" : "lazy"}

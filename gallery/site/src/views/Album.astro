@@ -101,7 +101,7 @@ if (!single) {
     single ? (
       <section class="museum wrap" data-gallery>
         <div class="museum-stage" style={`--photo-aspect:${aspect(photo)}`} >
-        <a class="museum-photo" style={`--photo-aspect:${aspect(photo)}`} {...pswpData(photo)}>
+        <a class="museum-photo" style={`--photo-aspect:${aspect(photo)};background:${photo.color} url("${photo.lqip}") center / contain no-repeat`} {...pswpData(photo)}>
           <img
             src={pick(photo, 1600).url}
             srcset={srcsetOf(photo)}
@@ -112,7 +112,7 @@ if (!single) {
             alt={album.title}
             fetchpriority="high"
             decoding="async"
-            style={`aspect-ratio:${aspect(photo).toFixed(4)};background-color:${photo.color}`}
+            style={`aspect-ratio:${aspect(photo).toFixed(4)};background:${photo.color} url("${photo.lqip}") center / contain no-repeat`}
             transition:name={`photo-${photo.key}`}
             data-vt-current={photo.key}
           />

@@ -75,7 +75,7 @@ def commit_files(client, branch, files, prefix, allow_update, progress, error, m
         for path, entry in tree.items():
             if path.startswith(prefix) and entry['type'] == 'blob' and path[len(prefix):] not in files:
                 leaf = path[len(prefix):]
-                if leaf.startswith('_preview/') or leaf in ('index.md', '_processed.json') or '/' not in leaf and Path(leaf).suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tif', '.tiff'}:
+                if leaf.startswith('_preview/') or leaf in ('index.md', '_processed.json', '_sources.json') or '/' not in leaf and Path(leaf).suffix.lower() in {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.tif', '.tiff'}:
                     entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': None})
     if not entries:
         return head

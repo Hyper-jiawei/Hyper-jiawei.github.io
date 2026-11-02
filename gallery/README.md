@@ -115,3 +115,9 @@ npm run preview
 
 发布失败时查看 Actions 日志，先检查 YAML 缩进、文件名大小写及图片格式。旧网站在新部署成功前保持可用。
 
+
+## iPhone 独立发布
+
+Safari 打开 [手机版发布工具](https://hyper-jiawei.github.io/gallery/publish/)，通过「分享 → 添加到主屏幕」安装桌面入口，不依赖 Mac。支持选片、改标题、封面、精选、空简介、配置生成、本机草稿和自动公开分仓。发布时需保持前台联网。
+
+完整操作、令牌权限、HEIC 原件选择与免费速度限制见 [手机版说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/gallery/site/public/publish/README.md)。

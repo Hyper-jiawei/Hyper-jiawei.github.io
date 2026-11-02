@@ -23,7 +23,7 @@ const tags = multi ? [...album.categories.map((c) => categoryName(c, lang)), tr.
 
 <a class:list={["card reveal", { "is-album": multi }]} href={albumUrl(album, lang)} data-categories={album.categories.join("|")} data-card data-ar={ar.toFixed(4)} data-astro-prefetch="hover" {...preloadFor(album)}>
   <div class="stack" style={`--tint:${cover.color}`}>
-  <figure style={`background-color:${cover.color};aspect-ratio:${ar.toFixed(4)}`}>
+  <figure style={`background:${cover.color} url("${cover.lqip}") center / cover no-repeat;aspect-ratio:${ar.toFixed(4)}`}>
     <img
       class="fade"
       data-deferred-src={v.url}

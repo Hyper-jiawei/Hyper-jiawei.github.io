@@ -24,10 +24,10 @@ const MANIFEST = path.join(ROOT, "src/data/gallery.json");
 // single-photo pages) gets a file that is just big enough instead of the 3000px one —
 // the same sharpness on screen for roughly half the bytes on slow connections.
 const WIDTHS = [480, 960, 1600, 2200, 3000];
-// Bump to re-encode every photo. v2: high quality, no colour or tone changes.
+// v3: lighter screen previews (WebP q82); camera originals remain byte-for-byte intact.
 // Exports are served as immutable (public/_headers): bump this (or THUMBNAIL_VERSION)
 // whenever their contents change, so they get new URLs.
-const ENCODE_VERSION = 2;
+const ENCODE_VERSION = 3;
 // Listing thumbnails have their own cache/version; full-size photo exports stay intact.
 const THUMBNAIL_PRESETS = [
   { edge: 360, quality: 70 },
@@ -426,7 +426,7 @@ async function paletteOf(input, k = 4) {
   return { v: PALETTE_VERSION, colors: shown.map(oklabToHex) };
 }
 
-async function processImage(file, cache) {
+async function processImage(file, cache, previewOnly = false) {
   const stat = await fs.stat(file);
   const rel = path.relative(CONTENT, file);
   const key = crypto
@@ -457,9 +457,9 @@ async function processImage(file, cache) {
   const originalUrl = `/img/${key}/original${path.extname(file).toLowerCase()}`;
   await fs.mkdir(dir, { recursive: true });
   const originalPath = path.join(ROOT, "public", originalUrl);
-  if (!existsSync(originalPath)) await fs.copyFile(file, originalPath);
+  if (!previewOnly && !existsSync(originalPath)) await fs.copyFile(file, originalPath);
 
-  if (cached && (!heic || existsSync(displayPath)) && cached.srcset.every((s) => existsSync(path.join(ROOT, "public", s.url)))) {
+  if (cached && (!heic || previewOnly || existsSync(displayPath)) && cached.srcset.every((s) => existsSync(path.join(ROOT, "public", s.url)))) {
     if (cached.tone?.v !== TONE_VERSION) cached.tone = await toneOf(path.join(ROOT, "public", cached.srcset[0].url));
     if (cached.palette?.v !== PALETTE_VERSION) cached.palette = await paletteOf(path.join(ROOT, "public", cached.srcset[0].url));
     // Add any size introduced since this photo was cached, without re-encoding the rest.
@@ -473,7 +473,7 @@ async function processImage(file, cache) {
         const w = Math.round(cached.width * scale);
         const h = Math.round(cached.height * scale);
         const url = `/img/${key}/${box}.webp`;
-        await base.clone().resize(w, h, { fit: "fill" }).webp({ quality: 92, smartSubsample: true, effort: 5 }).toFile(path.join(ROOT, "public", url));
+        await base.clone().resize(w, h, { fit: "fill" }).webp({ quality: 82, smartSubsample: true, effort: 5 }).toFile(path.join(ROOT, "public", url));
         cached.srcset.push({ url, w, h });
       }
       cached.srcset.sort((a, b) => a.w - b.w);
@@ -489,7 +489,7 @@ async function processImage(file, cache) {
   const height = rotated ? meta.width : meta.height;
   const longest = Math.max(width, height);
   // Browser-compatible full-pixel version for zooming; original HEIC stays downloadable.
-  if (heic) await base.clone().jpeg({ quality: 96, chromaSubsampling: "4:4:4" }).toFile(displayPath);
+  if (heic && !previewOnly) await base.clone().jpeg({ quality: 96, chromaSubsampling: "4:4:4" }).toFile(displayPath);
 
   await fs.mkdir(dir, { recursive: true });
   const srcset = [];
@@ -504,7 +504,7 @@ async function processImage(file, cache) {
     await base
       .clone()
       .resize(w, h, { fit: "fill" })
-      .webp({ quality: 92, smartSubsample: true, effort: 5 })
+      .webp({ quality: 82, smartSubsample: true, effort: 5 })
       .toFile(path.join(ROOT, "public", url));
     srcset.push({ url, w, h });
   }
@@ -524,7 +524,7 @@ async function processImage(file, cache) {
   const palette = await paletteOf(small);
   const original = { url: originalUrl, w: width, h: height };
   const entry = { width, height, color, lqip, srcset, exif, tone, palette, original,
-    ...(heic ? { displayOriginal: { url: displayUrl, w: width, h: height } } : {}) };
+    ...(heic && !previewOnly ? { displayOriginal: { url: displayUrl, w: width, h: height } } : {}) };
   cache[key] = entry;
   return { key, ...entry };
 }
@@ -576,6 +576,41 @@ async function pool(items, fn, size, label = "images") {
   return results;
 }
 
+// Mobile publishes originals to numbered public archives; Actions builds derivatives.
+// Never accept arbitrary URLs or paths from a content manifest.
+async function readRemoteSources(manifestFile, albumName) {
+  const source = JSON.parse(await fs.readFile(manifestFile, 'utf8'));
+  if (!/^Hyper-jiawei\/gallery\d{2,}$/.test(source.repository) || !/^[a-f0-9]{40}$/.test(source.commit) || !Array.isArray(source.files) || source.files.length === 0) throw new Error('Invalid original archive manifest');
+  const seen = new Set();
+  for (const f of source.files) {
+    if (typeof f.name !== 'string' || !IMAGE_RE.test(f.name) || /[\\/\x00-\x1f?#%]/.test(f.name) || f.name.startsWith('.') || !/^[a-f0-9]{40}$/.test(f.sha) || !Number.isInteger(f.size) || f.size < 1 || f.size >= 100 * 1024 ** 2 || seen.has(f.name)) throw new Error('Invalid original archive file');
+    seen.add(f.name);
+  }
+  if (source.files.reduce((n,f) => n + f.size, 0) >= 800 * 1024 ** 2) throw new Error('Original archive album exceeds budget');
+  const directory = path.join(ROOT, '.cache', 'remote-albums', albumName);
+  await fs.mkdir(directory, { recursive: true });
+  const files = new Map();
+  for (const f of source.files) {
+    const url = `https://raw.githubusercontent.com/${source.repository}/${source.commit}/gallery/content/${encodeURIComponent(albumName)}/${encodeURIComponent(f.name)}`;
+    const file = path.join(directory, f.name);
+    const valid = (data) => data.length === f.size && crypto.createHash('sha1').update(`blob ${data.length}\0`).update(data).digest('hex') === f.sha;
+    let bytes;
+    if (existsSync(file)) { const cached = await fs.readFile(file); if (valid(cached)) bytes = cached; }
+    if (!bytes) {
+      console.log('[gallery] fetch archive original:', f.name);
+      const response = await fetch(url, { signal: AbortSignal.timeout(90000) });
+      if (!response.ok || Number(response.headers.get('content-length')) > f.size) throw new Error('Unable to fetch archive original: ' + f.name);
+      const reader = response.body.getReader(); const chunks = []; let received = 0;
+      for (;;) { const {done,value} = await reader.read(); if (done) break; received += value.length; if (received > f.size) { await reader.cancel(); throw new Error('Archive original exceeds declared size'); } chunks.push(value); }
+      bytes = Buffer.concat(chunks);
+      if (!valid(bytes)) throw new Error('Archive original SHA mismatch: ' + f.name);
+      await fs.writeFile(file, bytes);
+    }
+    files.set(f.name, { file, url });
+  }
+  return files;
+}
+
 async function main() {
   console.log(`[gallery] reading albums from ${CONTENT}`);
   const cache = existsSync(CACHE_FILE) ? JSON.parse(await fs.readFile(CACHE_FILE, "utf8")) : {};
@@ -613,8 +648,10 @@ async function main() {
       albums.push(album);
       continue;
     }
+    const sourceFile = path.join(dir, '_sources.json');
+    const remoteFiles = existsSync(sourceFile) ? await readRemoteSources(sourceFile, dirName) : null;
     // Hugo sorts resources by Name ascending by default.
-    const files = (await fs.readdir(dir)).filter((f) => IMAGE_RE.test(f)).sort();
+    const files = (remoteFiles ? [...remoteFiles.keys()] : (await fs.readdir(dir)).filter((f) => IMAGE_RE.test(f))).sort();
     if (files.length === 0) continue;
 
     const resources = Array.isArray(fm.resources) ? fm.resources : [];
@@ -644,16 +681,24 @@ async function main() {
         }),
     };
     albums.push(album);
-    for (const photo of album.photos) jobs.push({ album, photo });
+    for (const photo of album.photos) jobs.push({ album, photo, remote: remoteFiles?.get(photo.file) });
   }
 
   console.log(`[gallery] ${albums.length} albums, ${jobs.length} photos (concurrency ${CONCURRENCY})`);
   await fs.mkdir(OUT_DIR, { recursive: true });
   await pool(
     jobs,
-    async ({ album, photo }) => {
+    async ({ album, photo, remote }) => {
       try {
-        Object.assign(photo, await processImage(path.join(CONTENT, album.dir, photo.file), cache));
+        Object.assign(photo, await processImage(remote?.file ?? path.join(CONTENT, album.dir, photo.file), cache, Boolean(remote)));
+        if (remote) {
+          const localOriginal = photo.original.url;
+          photo.original = { ...photo.original, url: remote.url };
+          const compatibleOriginal = photo.displayOriginal?.url;
+          photo.displayOriginal = photo.srcset.at(-1);
+          await fs.rm(path.join(ROOT, 'public', localOriginal), { force: true });
+          if (compatibleOriginal && !compatibleOriginal.endsWith('.webp')) await fs.rm(path.join(ROOT, 'public', compatibleOriginal), { force: true });
+        }
       } catch (err) {
         console.error(`\n[gallery] failed: ${album.dir}/${photo.file}: ${err.message}`);
         photo.failed = true;

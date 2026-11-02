@@ -81,10 +81,16 @@ python3 -m unittest discover -s tools/gallery-publisher/tests -v
 
 发布前按原图三倍开销估算主站容量，采用 650 MiB 保守预算。超过预算或专辑已分仓时，使用 `gallery01`、`gallery02` 等公开仓库保存未改写原图和完整配置；每个原图库按 800 MiB 预算轮换。跳过同名私人仓库，不改变其可见性。单辑超过 800 MiB 需拆辑。仓库大小统计有延迟，这些是工具预算，并非 GitHub 硬容量限制。
 
-主站保留展示配置副本、EXIF / 色块清单及最长边不超过 3000px 的 WebP。分仓专辑在本机生成预览，Actions 直接复制，无需原图库访问令牌，也不再重复转换这些原图。已有普通专辑仍按原流程构建。
+主站保留展示配置副本、EXIF / 色块清单及最长边不超过 3000px 的 WebP。分仓专辑在本机生成预览，Actions 直接复制，无需原图库访问令牌，也不再重复转换这些原图。手机版分仓使用 `_sources.json` 指向公开原图库，由 Actions 取回并校验原件后生成预览。已有普通专辑仍按原流程构建。
 
 **访客无需登录即可下载分仓原图**，按钮指向 raw.githubusercontent.com 上固定提交版本的原文件。HEIC 下载保留 HEIC 格式。不会向网页写入令牌。已有公开原图不会自动迁移或变为私密。原图库先完成提交，主站最后更新；中途失败可重试。
 
 凭据需有创建和读写公开仓库的权限。仅授权主站的细粒度令牌可能需重新授权；权限不足时停止。公开预览也接近主站预算时将停止并提示接入图片托管，拆分原图不能无限扩容 Pages。
 
 更新后请关闭旧工具终端，再双击启动文件以加载新版本。
+
+## iPhone 独立发布
+
+Safari 打开 [手机版发布工具](https://hyper-jiawei.github.io/gallery/publish/)，通过「分享 → 添加到主屏幕」安装桌面入口，不依赖 Mac。支持选片、改标题、封面、精选、空简介、配置生成、本机草稿和自动公开分仓。发布时需保持前台联网。
+
+完整操作、令牌权限、HEIC 原件选择与免费速度限制见 [手机版说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/gallery/site/public/publish/README.md)。

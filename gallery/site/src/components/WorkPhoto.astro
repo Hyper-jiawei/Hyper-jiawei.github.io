@@ -23,7 +23,7 @@ const tr = t(lang);
 <figure class:list={["work reveal", className]} style={style}>
   <a
     class="work-photo"
-    style={`aspect-ratio:${aspect(p).toFixed(4)};background-color:${p.color}`}
+    style={`aspect-ratio:${aspect(p).toFixed(4)};background:${p.color} url("${p.lqip}") center / cover no-repeat`}
     href={photoUrl(album, p, lang)}
     data-astro-prefetch="hover"
   >

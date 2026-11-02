@@ -197,7 +197,7 @@ def publish_album(client, branch, folder, slug, allow_update, progress):
     current_head = client.head(branch)
     current_tree_sha, remote_tree = client.tree(current_head)
     incoming = sum(p['size'] for p in inspected['photos'])
-    archived = 'gallery/content/' + slug + '/_processed.json' in remote_tree
+    archived = any('gallery/content/' + slug + '/' + name in remote_tree for name in ('_processed.json', '_sources.json'))
     if archived or storage.estimate_main(remote_tree, incoming) > storage.MAIN_BUDGET:
         return storage.publish_archived(client, branch, folder, slug, inspected, allow_update, progress, PublisherError, ROOT / 'gallery/site', find_node(), worker)
     progress('读取远端最新版本', 0, len(inspected['photos']) + 1)
