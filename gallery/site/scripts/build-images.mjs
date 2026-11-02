@@ -580,7 +580,10 @@ async function pool(items, fn, size, label = "images") {
 // Never accept arbitrary URLs or paths from a content manifest.
 async function readRemoteSources(manifestFile, albumName) {
   const source = JSON.parse(await fs.readFile(manifestFile, 'utf8'));
-  if (!/^Hyper-jiawei\/gallery\d{2,}$/.test(source.repository) || !/^[a-f0-9]{40}$/.test(source.commit) || !Array.isArray(source.files) || source.files.length === 0) throw new Error('Invalid original archive manifest');
+  if (!/^([A-Za-z0-9][A-Za-z0-9-]*)\/([A-Za-z0-9][A-Za-z0-9_.-]*)$/.test(source.repository) || !/^[a-f0-9]{40}$/.test(source.commit) || !Array.isArray(source.files) || source.files.length === 0) throw new Error('Invalid original archive manifest');
+  const sourcePath = source.path ?? 'gallery/content/' + albumName + '/';
+  const pathParts = typeof sourcePath === 'string' ? sourcePath.replace(/\/$/, '').split('/') : [];
+  if (!pathParts.length || pathParts.some(p => !p || p === '.' || p === '..' || /[\\\x00-\x1f?#%]/.test(p))) throw new Error('Invalid original archive path');
   const seen = new Set();
   for (const f of source.files) {
     if (typeof f.name !== 'string' || !IMAGE_RE.test(f.name) || /[\\/\x00-\x1f?#%]/.test(f.name) || f.name.startsWith('.') || !/^[a-f0-9]{40}$/.test(f.sha) || !Number.isInteger(f.size) || f.size < 1 || f.size >= 100 * 1024 ** 2 || seen.has(f.name)) throw new Error('Invalid original archive file');
@@ -591,7 +594,7 @@ async function readRemoteSources(manifestFile, albumName) {
   await fs.mkdir(directory, { recursive: true });
   const files = new Map();
   for (const f of source.files) {
-    const url = `https://raw.githubusercontent.com/${source.repository}/${source.commit}/gallery/content/${encodeURIComponent(albumName)}/${encodeURIComponent(f.name)}`;
+    const url = `https://raw.githubusercontent.com/${source.repository}/${source.commit}/${pathParts.map(encodeURIComponent).join('/')}/${encodeURIComponent(f.name)}`;
     const file = path.join(directory, f.name);
     const valid = (data) => data.length === f.size && crypto.createHash('sha1').update(`blob ${data.length}\0`).update(data).digest('hex') === f.sha;
     let bytes;

@@ -94,3 +94,10 @@ python3 -m unittest discover -s tools/gallery-publisher/tests -v
 Safari 打开 [手机版发布工具](https://hyper-jiawei.github.io/gallery/publish/)，通过「分享 → 添加到主屏幕」安装桌面入口，不依赖 Mac。支持选片、改标题、封面、精选、空简介、配置生成、本机草稿和自动公开分仓。发布时需保持前台联网。
 
 完整操作、令牌权限、HEIC 原件选择与免费速度限制见 [手机版说明](https://github.com/Hyper-jiawei/Hyper-jiawei.github.io/blob/main/gallery/site/public/publish/README.md)。
+
+
+## 跨仓库权限
+
+手机版现在支持在页面中切换网站仓库、分支、专辑路径，指定任意公开原图库或自定义自动编号前缀。Mac 版本也可通过启动参数选择已有网站仓库及分支，例如 `python3 tools/gallery-publisher/publisher.py --repository owner/site --branch main`；默认专辑路径仍为 gallery/content。
+
+要让同一令牌覆盖后续自动创建的 galleryXX：Fine-grained token 的 Repository access 使用 All repositories，Contents 设为 Read and write，并添加 Repository creation 写入（旧权限方案可用 Administration 写入）；或在个人公开仓库场景使用 Classic public_repo。仅授权 io 仓库不能写入未授权的新原图库。密钥说明与新版手机操作见 [手机版说明](../../gallery/site/public/publish/README.md)。
