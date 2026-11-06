@@ -327,7 +327,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
     <div class="badges">
       <span>5 类业务闭环 · 3 类扩展</span>
       <span>手势测试 98.85%</span>
-      <span>YOLO12n 13.56ms</span>
+      <span>YOLOv8n 20.2ms</span>
       <span>Apple Silicon M1 已验证</span>
       <span>无声 · 自动循环演示</span>
     </div>
@@ -536,7 +536,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
           <div class="row"><dt>停留进度圈<small>DWELL</small></dt><dd>稳定约 1.1 秒后锁定目标，容忍轻微抖动</dd></div>
         </div>
         <div class="tags" style="margin-top:18px">
-          <span class="tag on">MediaPipe</span><span class="tag on">PyTorch MLP</span><span class="tag on">YOLO12n</span><span class="tag on">ZXing</span><span class="tag">Tkinter</span><span class="tag">AVFoundation</span>
+          <span class="tag on">MediaPipe</span><span class="tag on">PyTorch MLP</span><span class="tag on">YOLOv8n</span><span class="tag on">ZXing</span><span class="tag">Tkinter</span><span class="tag">AVFoundation</span>
         </div>
       </div>
       <div class="reveal" style="--d:.1s">
@@ -590,7 +590,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
         <h3 class="reveal" style="--d:.04s">破损识别与异常上报取证</h3>
         <p class="pos reveal" style="--d:.08s">发现破损包装、散落物品或需要复核的内件时，双指框定目标，系统识别所选物品并保存证据，形成待处理报告。</p>
         <dl>
-          <div class="reveal" style="--d:.1s"><dt>识别准备</dt><dd>进入破损件上报模式后，YOLO12 在后台持续处理最新画面，提前准备识别结果</dd></div>
+          <div class="reveal" style="--d:.1s"><dt>识别准备</dt><dd>进入破损件上报模式后，YOLOv8 在后台持续处理最新画面，提前准备识别结果</dd></div>
           <div class="reveal" style="--d:.14s"><dt>目标锁定</dt><dd>双食指指向目标对角，稳定约 <b>1.1 秒</b>后锁定；有效缓存可立即显示目标类别，如 <b>book</b>、<b>apple</b></dd></div>
           <div class="reveal" style="--d:.18s"><dt>证据留存</dt><dd>目标框显示类别与置信度，保存带标注的取证照片及 <b>JSON 报告</b>；移开手指后隐藏临时识别结果</dd></div>
           <div class="reveal" style="--d:.22s"><dt>当前边界</dt><dd>实现的是「操作员发起异常 → 目标识别 → 拍照取证 → 本地报告」；企业系统上传与专用破损检测模型为后续接入内容</dd></div>
@@ -723,7 +723,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
       <div class="step"><b>63 维特征</b><span>手腕为原点、掌部距离归一化</span></div>
       <div class="step"><b>MLP 分类</b><span>63 → 128 → 64 → 11，Softmax 置信度</span></div>
       <div class="step hot"><b>状态机</b><span>IoU 跟踪 + 停留 + 双次 OK 时序</span></div>
-      <div class="step"><b>业务分发</b><span>ZXing / YOLO12 / 启停 / 格口</span></div>
+      <div class="step"><b>业务分发</b><span>ZXing / YOLOv8 / 启停 / 格口</span></div>
     </div>
 
     <div class="mtable-wrap reveal" style="--d:.1s">
@@ -737,7 +737,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
           <tr><th>左右手处理</th><td>分开采集、共享模型</td><td>覆盖手背方向差异，不只适配单手</td></tr>
           <tr><th>稳定选择</th><td>IoU 关联、指尖坐标、位置容差</td><td>容忍轻微抖动，减少瞬间误触发</td></tr>
           <tr><th>时序判断</th><td>握拳计时、双次 OK、展开→捏合→展开</td><td>区分单帧姿态与有起止的动作</td></tr>
-          <tr><th>物品识别</th><td>Ultralytics YOLO12n</td><td>给出框选物体的类别、置信度与边界框</td></tr>
+          <tr><th>物品识别</th><td>Ultralytics YOLOv8n</td><td>给出框选物体的类别、置信度与边界框</td></tr>
           <tr><th>条码解码</th><td>ZXing + 预处理 + 多帧重试</td><td>提高指定区域条码的读取机会</td></tr>
           <tr><th>工作站交互</th><td>Tkinter + 摄像头线程 + 最新帧队列</td><td>统一界面，后台任务不阻塞预览</td></tr>
         </tbody>
@@ -763,7 +763,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
       <div class="s"><div class="v num">98.85<em>%</em></div><div class="k">分类测试正确率（257/260）</div></div>
       <div class="s"><div class="v num">96.54<em>%</em></div><div class="k">阈值 0.85 接受覆盖率</div></div>
       <div class="s"><div class="v num">99.20<em>%</em></div><div class="k">接受样本正确率</div></div>
-      <div class="s"><div class="v num">13.56<em>ms</em></div><div class="k">YOLO12n 单帧推理中位数</div></div>
+      <div class="s"><div class="v num">20.2<em>ms</em></div><div class="k">YOLOv8n 单帧推理中位数（Apple M1）</div></div>
     </div>
 
     <div class="hr"></div>
@@ -950,7 +950,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
           <li><a href="https://github.com/fukuuy/gestures-recog" target="_blank" rel="noopener">fukuuy/gestures-recog<small>关键点与序列</small></a></li>
           <li><a href="https://github.com/Hyper-jiawei/handpose_x" target="_blank" rel="noopener">Hyper-jiawei/handpose_x<small>手部姿态</small></a></li>
           <li><a href="https://github.com/google-ai-edge/mediapipe" target="_blank" rel="noopener">Google AI Edge MediaPipe<small>MEDIAPIPE</small></a></li>
-          <li><a href="https://docs.ultralytics.com/models/yolo12/" target="_blank" rel="noopener">Ultralytics YOLO12<small>DETECTION</small></a></li>
+          <li><a href="https://docs.ultralytics.com/models/yolov8/" target="_blank" rel="noopener">Ultralytics YOLOv8<small>DETECTION</small></a></li>
           <li><a href="https://github.com/zxing-cpp/zxing-cpp" target="_blank" rel="noopener">ZXing-C++<small>BARCODE</small></a></li>
         </ul>
       </div>
