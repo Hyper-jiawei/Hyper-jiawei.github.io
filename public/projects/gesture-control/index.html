@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>基于 AI 视觉的操作工隔空手勢操作系統 · YTO 创新大赛</title>
+<title>基于 AI 视觉的操作工隔空手势操作系统 · YTO 创新大赛</title>
 <link rel="icon" href="https://hyper-jiawei.github.io/YTO-Innovation-Gesture-Control-Mac/assets/YTO.png">
 <style>
   :root{
@@ -27,7 +27,7 @@
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17.5px;line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:clamp(16px,4.15vw,17.5px);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   img,video{max-width:100%}
   ::selection{background:var(--accent);color:#fff}
   a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .25s var(--ease),color .25s var(--ease)}
@@ -53,8 +53,8 @@
   section{position:relative;padding:clamp(84px,11vw,150px) 0}
   .kicker{font-family:var(--mono);font-size:12.5px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;display:flex;align-items:center;gap:14px}
   .kicker::before{content:"";width:34px;height:1px;background:var(--accent-dim)}
-  h2.title{font-size:clamp(31px,4vw,50px);font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:18px 0 12px}
-  .lead{color:var(--ink2);max-width:72ch;font-size:clamp(17px,1.5vw,20px)}
+  h2.title{font-size:clamp(28px,5.4vw,50px);font-weight:700;letter-spacing:-.02em;line-height:1.25;margin:18px 0 12px;overflow-wrap:anywhere}
+  .lead{color:var(--ink2);max-width:72ch;font-size:clamp(16.5px,4.2vw,20px);overflow-wrap:anywhere}
   .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
   .s-index{position:absolute;top:clamp(60px,8vw,110px);right:clamp(20px,5vw,80px);font-family:var(--mono);font-size:clamp(60px,8vw,120px);line-height:1;color:rgba(101,68,165,.07);font-weight:700;pointer-events:none;user-select:none}
   @media (max-width:720px){.s-index{display:none}}
@@ -72,9 +72,9 @@
   .cover .inner{position:relative;z-index:2;width:100%;padding-bottom:clamp(60px,9vh,110px);padding-top:20vh}
   .cover .kicker{color:#C6B3F0}
   .cover .kicker::before{background:rgba(198,179,240,.7)}
-  .cover h1{font-size:clamp(30px,4.2vw,58px);line-height:1.12;letter-spacing:-.025em;font-weight:800;max-width:15em;margin:22px 0 20px;color:#fff}
+  .cover h1{font-size:clamp(30px,5.6vw,58px);line-height:1.16;letter-spacing:-.02em;font-weight:800;max-width:15em;margin:22px 0 20px;color:#fff}
   .cover h1 em{font-style:normal;color:#B49BEC}
-  .cover .sub{color:rgba(255,255,255,.88);font-size:clamp(17px,1.7vw,21px);max-width:60ch}
+  .cover .sub{color:rgba(255,255,255,.88);font-size:clamp(16.5px,4.1vw,21px);max-width:60ch}
   .cover .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
   .cover .badges span{font-size:12.5px;font-family:var(--mono);letter-spacing:.04em;color:#E9E2F7;border:1px solid rgba(198,179,240,.45);background:rgba(180,155,236,.14);padding:4px 12px;border-radius:99px}
   .cover .meta{display:flex;flex-wrap:wrap;gap:12px 34px;margin-top:38px;padding-top:26px;border-top:1px solid rgba(255,255,255,.28);font-size:14.5px;color:rgba(255,255,255,.78)}
@@ -104,7 +104,7 @@
   .cols2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,4vw,64px);align-items:start}
   @media (max-width:900px){.cols2{grid-template-columns:1fr}}
   .hr{height:1px;background:var(--line);margin:clamp(44px,6vw,84px) 0}
-  h3.sub{font-size:clamp(21px,2.2vw,26px);font-weight:700;letter-spacing:-.01em;margin-bottom:14px;display:flex;align-items:center;gap:12px;line-height:1.35}
+  h3.sub{font-size:clamp(19px,4.6vw,26px);font-weight:700;letter-spacing:-.01em;margin-bottom:14px;display:flex;align-items:center;gap:12px;line-height:1.4;overflow-wrap:anywhere}
   h3.sub svg{width:20px;height:20px;color:var(--accent);flex:none}
   .note{font-size:13.5px;color:var(--ink3);margin-top:18px;line-height:1.7}
 
@@ -158,7 +158,7 @@
   .dive .visual img{width:100%;display:block;border:1px solid var(--line2);border-radius:6px;background:#17151e}
   .dive .visual .cap{position:absolute;left:0;bottom:0;right:0;padding:12px 18px;font-size:12.5px;color:var(--ink3);background:rgba(255,255,255,.94);border-top:1px solid var(--line);font-family:var(--mono);letter-spacing:.06em;border-radius:0 0 6px 6px}
   .dive .rank{font-family:var(--mono);font-size:12.5px;color:var(--accent);letter-spacing:.24em}
-  .dive h3{font-size:clamp(24px,2.8vw,32px);font-weight:800;letter-spacing:-.015em;margin:12px 0 6px}
+  .dive h3{font-size:clamp(21px,5vw,32px);font-weight:800;letter-spacing:-.015em;margin:12px 0 6px;overflow-wrap:anywhere}
   .dive .pos{color:var(--ink2);font-size:16.5px;margin-bottom:22px}
   .dive dl{border-top:1px solid var(--line2);margin:0}
   .dive dl>div{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:13px 2px;border-bottom:1px solid var(--line)}
@@ -190,6 +190,10 @@
   table.mtable.ext td{white-space:normal;text-align:left;line-height:1.8;vertical-align:top;font-size:15px}
   table.mtable.ext thead th{text-align:left;font-size:14px}
   table.mtable.ext th:first-child{white-space:nowrap;font-size:15px}
+  table.mtable.team{min-width:0}
+  table.mtable.team th,table.mtable.team td{white-space:normal;text-align:left;vertical-align:top}
+  table.mtable.team td{font-size:15px;line-height:1.75}
+  table.mtable.team th:first-child{white-space:nowrap}
   .ok{color:var(--green);font-weight:600}
   .mid{color:var(--gold);font-weight:600}
   .off{color:var(--ink3)}
@@ -197,7 +201,7 @@
   /* dir cards */
   .dir{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--bg2);padding:clamp(24px,3vw,40px);margin-top:26px;border-radius:0 8px 8px 0}
   .dir .dn{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.2em}
-  .dir h3{font-size:clamp(20px,2.2vw,26px);font-weight:800;margin:10px 0 10px;letter-spacing:-.01em}
+  .dir h3{font-size:clamp(19px,4.6vw,26px);font-weight:800;margin:10px 0 10px;letter-spacing:-.01em;overflow-wrap:anywhere}
   .dir p{color:var(--ink2);font-size:16px;max-width:78ch}
   .dir .mapline{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line2);font-size:14.5px;color:var(--ink2)}
   .dir .mapline b{color:var(--accent);font-family:var(--mono);font-size:11px;letter-spacing:.14em;display:block;margin-bottom:8px}
@@ -236,7 +240,7 @@
   .figure{margin-top:44px}
   .figure figcaption{font-size:12.5px;color:var(--ink3);margin-top:12px;font-family:var(--mono);letter-spacing:.05em}
 
-  @media (max-width:700px){body{font-size:15px}section{padding:64px 0}}
+  @media (max-width:700px){section{padding:64px 0}}
 
   @media print{
     .dotnav,.progress,.brandmark,.scrollhint,.cover .cta,.cover .bg video{display:none}
@@ -276,19 +280,47 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
  .cols2,.dive{grid-template-columns:1fr}
  .dive.flip .visual{order:0}
 }
+@media(max-width:900px){
+ table.mtable{min-width:0}
+ .mtable th,.mtable td{white-space:normal}
+ .mtable thead th,.mtable td{text-align:left}
+ .mtable tbody th{text-align:left}
+}
+@media(max-width:680px){
+ /* 宽表改为卡片堆叠，避免手机上横向拖动 */
+ .mtable-wrap{overflow:visible;border:0;margin-top:24px}
+ table.mtable,table.mtable.ext,table.mtable.team{display:block;min-width:0;width:100%;font-size:15px}
+ table.mtable thead{display:none}
+ table.mtable tbody{display:block}
+ table.mtable tr{display:block;border:1px solid var(--line2);border-radius:10px;margin-bottom:12px;background:var(--bg);overflow:hidden}
+ table.mtable th,table.mtable td{display:block;white-space:normal;text-align:left;border:0;padding:0}
+ table.mtable tr>:first-child,table.mtable.ext tr>:first-child,table.mtable.team tr>:first-child{font-size:17px;font-weight:700;color:var(--ink);white-space:normal;background:var(--bg2);padding:12px 16px;border-bottom:1px solid var(--line)}
+ table.mtable td,table.mtable.ext td,table.mtable.team td{font-size:15px;line-height:1.8;color:var(--ink2);padding:10px 16px}
+ table.mtable td+td{border-top:1px dashed var(--line)}
+ table.mtable tr>:last-child{padding-bottom:15px}
+}
 @media(max-width:600px){
- body{font-size:16px;line-height:1.75}
+ body{line-height:1.78}
  .wrap{padding-left:18px;padding-right:18px}
  section{padding:64px 0}
- h2.title{font-size:28px}.cover h1{font-size:32px;line-height:1.25}
+ .cover .inner{padding-top:72px;padding-bottom:56px}
+ .cover .meta{font-size:14px;gap:8px 20px;margin-top:28px;padding-top:20px}
+ .cover .badges span{font-size:11.5px;padding:3px 10px}
  .cover .cta{gap:10px}.cover .cta .btn{width:100%;justify-content:center}
- .kicker{font-size:11px;letter-spacing:.12em}
+ .kicker{font-size:11.5px;letter-spacing:.14em;gap:10px}
  .toc-grid{grid-template-columns:minmax(0,1fr)}
  .statstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
- .dotnav span{font-size:13px}.dotnav a{padding:10px 8px}
- .mtable-wrap{max-width:100%;overscroll-behavior-x:contain}
+ .statstrip .s{padding:20px 14px 18px}
+ .statstrip .s:last-child{grid-column:1/-1;border-right:none}
+ .note,.figure figcaption,.dive .visual .cap,.dive dt{font-size:14px}
+ .dotnav span{font-size:13.5px}.dotnav a{padding:10px 8px}
  .refs{grid-template-columns:minmax(0,1fr)}
+ .refs li a{font-size:14.5px;overflow-wrap:anywhere}
+ .refs li a small{font-size:10.5px}
  .scrollhint{display:none}
+ .codeblock{font-size:12.5px;padding:14px 16px}
+ .dive .plinks a{overflow-wrap:anywhere}
+ footer{font-size:14px;line-height:1.85}
 }
 @media print{body{padding-left:0}.report-navigation,.brandmark,.progress{display:none}.reveal{opacity:1;transform:none}}
 
@@ -322,7 +354,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
   <div class="veil"></div>
   <div class="wrap inner">
     <div class="kicker">YTO Innovation · 圆通创新大赛</div>
-    <h1>基于 AI 视觉的<br><em>操作工隔空手勢操作系統</em></h1>
+    <h1>基于 AI 视觉的<br><em>操作工隔空手势操作系统</em></h1>
     <p class="sub">双手，就是操作台。面向物流操作中心的视觉交互工作站：用一枚固定摄像头把「指一下、比个数字、握拳」变成业务指令，让扫码、拍照、取证与设备控制收进同一个工作面。人工标注的破损位置沉淀为训练样本，数字手势 1–10 为 PLC 与机器人任务预留指令入口。</p>
     <div class="badges">
       <span>5 类业务闭环 · 3 类扩展</span>
@@ -337,7 +369,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
       <a class="btn" href="#s-demo">直达功能演示</a>
     </div>
     <div class="meta">
-      <span>团队 <b>白佳伟 · 孟万通 · 马丽媛 · 张冰玉</b></span>
+      <span>团队 <b>白佳伟 · 张冰玉 · 孟万通 · 马丽媛</b></span>
       <span>营运板块 · 一线场景 · AI 视觉 · 提质增效</span>
       <span class="num">2026.11</span>
     </div>
@@ -745,7 +777,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
     </div>
 
     <div class="tags reveal" style="margin-top:22px">
-      <span class="tag on">Python 3.11</span><span class="tag on">Apple Silicon / Metal</span><span class="tag">Windows / CUDA</span><span class="tag">AVFoundation</span><span class="tag">本地 JSON 留存</span><span class="tag">79 项自动化测试</span>
+      <span class="tag on">Python 3.11</span><span class="tag on">Apple Silicon / Metal</span><span class="tag">Windows / CUDA</span><span class="tag">AVFoundation</span><span class="tag">本地 JSON 留存</span><span class="tag">86 项自动化测试</span>
     </div>
   </div>
 </section>
@@ -789,7 +821,7 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
         <div class="tags">
           <span class="tag">同一采集批次</span><span class="tag">时间分段留出</span><span class="tag">验证集不增强</span><span class="tag on">模型摘要公开</span>
         </div>
-        <p class="note">完整记录见仓库 <a href="https://github.com/Hyper-jiawei/YTO-Innovation-Gesture-Control-Mac/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener">docs/VALIDATION.md</a>；MacBook Air M1 已通过 79 项自动化测试。</p>
+        <p class="note">完整记录见仓库 <a href="https://github.com/Hyper-jiawei/YTO-Innovation-Gesture-Control-Mac/blob/main/docs/VALIDATION.md" target="_blank" rel="noopener">docs/VALIDATION.md</a>；MacBook Air M1 已通过 86 项自动化测试。</p>
       </div>
     </div>
   </div>
@@ -932,7 +964,19 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
   <div class="wrap">
     <div class="kicker reveal">Team &amp; References · 团队与参考</div>
     <h2 class="title reveal" style="--d:.05s">一线创新实践，<br>让识别与取证形成闭环</h2>
-    <p class="lead reveal" style="--d:.1s">参与成员：<b>白佳伟、孟万通、马丽媛、张冰玉</b>。项目定位为圆通速递营运板块的一线创新实践，聚焦「减少动作切换、提高操作连贯性、让识别与取证形成闭环」。</p>
+    <p class="lead reveal" style="--d:.1s">团队由产品、视觉研发与数据岗位组成，覆盖方案提出、DEMO 开发部署、数据采集与文档呈现。项目定位为圆通速递营运板块的一线创新实践，聚焦「减少动作切换、提高操作连贯性、让识别与取证形成闭环」。</p>
+
+    <div class="mtable-wrap reveal" style="--d:.14s;margin-top:30px">
+      <table class="mtable ext team">
+        <thead><tr><th>成员</th><th>部门</th><th>项目分工</th></tr></thead>
+        <tbody>
+          <tr><th>白佳伟</th><td>智能中台研发部-智能产品组</td><td>方案提出者，视觉 DEMO 全流程开发部署，多设备适配，项目仓库与网站维护</td></tr>
+          <tr><th>张冰玉</th><td>技术平台部-技术平台产品组</td><td>提供手势 PLC 控制器方案、手势上报拦截件方案，并配合项目 DEMO 进行整合</td></tr>
+          <tr><th>孟万通</th><td>智能中台研发部-数据中台开发组</td><td>手势数据集采集，PyTorch MLP 分类器与 Ultralytics YOLO 模型验证</td></tr>
+          <tr><th>马丽媛</th><td>智能中台研发部-智能产品组</td><td>项目方案制定与技术文档呈现，图文、编辑</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="refs reveal" style="margin-top:44px">
       <div>
@@ -962,8 +1006,8 @@ video,img{height:auto}figure{min-width:0}pre{max-width:100%;overflow:auto}
 
 <footer>
   <div class="wrap">
-    <div>基于 AI 视觉的操作工隔空手勢操作系統 · YTO 创新大赛　<span class="num">2026.11</span><br>演示素材由项目方提供；页面动图为原速循环 WebP，高清版本见各演示 MP4 入口。</div>
-    <div style="text-align:right">白佳伟 · 孟万通 · 马丽媛 · 张冰玉<br>离线版 · 图片与视频同目录引用，转发请整文件夹打包</div>
+    <div>基于 AI 视觉的操作工隔空手势操作系统 · YTO 创新大赛　<span class="num">2026.11</span><br>演示素材由项目方提供；页面动图为原速循环 WebP，高清版本见各演示 MP4 入口。</div>
+    <div style="text-align:right">白佳伟 · 张冰玉 · 孟万通 · 马丽媛<br>离线版 · 图片与视频同目录引用，转发请整文件夹打包</div>
   </div>
 </footer>
 
