@@ -120,9 +120,10 @@ function fmtShutter(t) {
 async function readExif(file) {
   try {
     const e = await exifr.parse(file, {
-      pick: ["Make", "Model", "LensModel", "FNumber", "ExposureTime", "FocalLength", "ISO", "DateTimeOriginal", "ImageDescription"],
+      pick: ["Make", "Model", "LensModel", "FNumber", "ExposureTime", "FocalLength", "ISO", "DateTimeOriginal", "CreateDate", "ImageDescription"],
     });
     if (!e) return null;
+    const date = e.DateTimeOriginal instanceof Date ? e.DateTimeOriginal : e.CreateDate;
     const exif = {
       camera: e.Model ? String(e.Model).trim() : null,
       lens: e.LensModel ? String(e.LensModel).trim() : null,
@@ -130,7 +131,7 @@ async function readExif(file) {
       aperture: e.FNumber ? `f/${fmtNumber(e.FNumber, 1)}` : null,
       shutter: fmtShutter(e.ExposureTime),
       iso: e.ISO ? `ISO ${e.ISO}` : null,
-      date: e.DateTimeOriginal instanceof Date ? [e.DateTimeOriginal.getFullYear(), String(e.DateTimeOriginal.getMonth() + 1).padStart(2, "0"), String(e.DateTimeOriginal.getDate()).padStart(2, "0")].join("-") : null,
+      date: date instanceof Date ? [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-") : null,
       description: e.ImageDescription ? String(e.ImageDescription).trim() : null,
     };
     return Object.values(exif).some(Boolean) ? exif : null;
@@ -641,6 +642,7 @@ async function main() {
       for (const photo of album.photos) {
         const params = resources.find(r => r.src === photo.file)?.params ?? {};
         photo.featured = featuredRank(params.featured); photo.description = params.description ?? null;
+        photo.captureDate = toDate(params.captureDate) ?? photo.captureDate;
       }
       album.cover = resources.find(r => r.params?.cover)?.src ?? album.cover;
       album.prepared = true;
@@ -680,7 +682,7 @@ async function main() {
         .filter((f) => !hidden.has(f)).map((file) => {
           const resource = resources.find((r) => r.src === file);
           return { file, title: path.parse(file).name, description: resource?.params?.description ?? null,
-            featured: featuredRank(resource?.params?.featured) };
+            captureDate: toDate(resource?.params?.captureDate), featured: featuredRank(resource?.params?.featured) };
         }),
     };
     albums.push(album);

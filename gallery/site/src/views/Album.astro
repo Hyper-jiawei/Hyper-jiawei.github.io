@@ -144,7 +144,7 @@ if (!single) {
               <VTitle tag="h1" class="plaque-title" text={album.title} />
             </div>
             <div class="plaque-body">
-              <p class="date num">{formatDate(photo.exif?.date ?? album.date, lang)}</p>
+              <p class="date num">{formatDate(photo.captureDate ?? photo.exif?.date ?? album.date, lang)}</p>
               <p class="cats label">
                 {album.categories.map((c, i) => (
                   <>

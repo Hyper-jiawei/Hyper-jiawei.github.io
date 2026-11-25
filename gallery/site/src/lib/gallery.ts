@@ -36,6 +36,7 @@ export interface Photo {
   thumbnail?: Variant;
   thumbnails?: Variant[];
   exif: Exif | null;
+  captureDate?: string | null;
   tone?: { hue: number; chroma: number; share: number; lightness: number; cast?: [number, number] };
   /** Four main colours, most widespread first (hex). */
   palette?: { v: number; colors: string[] };
@@ -71,7 +72,7 @@ export const photoSlug = (p: Photo) => encodeURIComponent(p.title);
 export const photoUrl = (a: Album, p: Photo, lang: Lang = defaultLang) => albumPath(lang, a.slug) + photoSlug(p) + "/";
 export const photoAlbums: Album[] = allAlbums.flatMap((a) => a.photos.map((p) => ({
   ...a, parentSlug: a.slug, slug: a.slug + "/" + p.title,
-  title: p.title, description: p.description, date: p.exif?.date ?? a.date,
+  title: p.title, description: p.description, date: p.captureDate ?? p.exif?.date ?? a.date,
   layout: "single" as const, cover: p.file, photos: [p],
 })));
 export const featuredPhotos = selectFeaturedPhotos(albums);

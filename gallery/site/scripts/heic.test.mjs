@@ -34,7 +34,7 @@ test("a complete HEIC album preserves EXIF/download bytes and generates zoom/pre
   await fs.symlink(path.join(site, "node_modules"), path.join(root, "node_modules"), "dir");
   for (const name of ["build-images.mjs", "heic-input.mjs", "featured.mjs"]) await fs.copyFile(path.join(site, "scripts", name), path.join(scripts, name));
   await fs.copyFile(fixture, path.join(content, "手机照片.HEIC"));
-  await fs.writeFile(path.join(content, "index.md"), '---\ntitle: "手机测试"\ndate: 2026-10-30\nfeatured: true\nresources:\n  - src: 手机照片.HEIC\n    params:\n      cover: true\n      featured: 1\n---\n');
+  await fs.writeFile(path.join(content, "index.md"), '---\ntitle: "手机测试"\ndate: 2026-10-30\nfeatured: true\nresources:\n  - src: 手机照片.HEIC\n    params:\n      cover: true\n      featured: 1\n      captureDate: "2026-10-29"\n---\n');
   const build = () => run(process.execPath, [path.join(scripts, "build-images.mjs")], { env: { ...process.env, GALLERY_CONTENT: path.join(root, "content") }, timeout: 60000 });
   await build();
   const manifest = path.join(root, "src/data/gallery.json");
@@ -43,6 +43,7 @@ test("a complete HEIC album preserves EXIF/download bytes and generates zoom/pre
   assert.equal(photo.featured, 1);
   assert.equal(photo.exif.camera, "HEIC test camera");
   assert.equal(photo.exif.date, "2026-10-30");
+  assert.equal(photo.captureDate, "2026-10-29");
   assert.equal(photo.palette.colors.length, 4);
   const asset = (url) => path.join(root, "public", url);
   assert.deepEqual(await fs.readFile(asset(photo.original.url)), await fs.readFile(fixture));
