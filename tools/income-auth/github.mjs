@@ -6,7 +6,7 @@ const MAX_BLOB_RESPONSE = Math.ceil(MAX_VAULT_BODY_BYTES / 3) * 4 + 8192;
 
 export async function githubRequest(fetcher, url, token, init = {}) {
   try {
-    return await fetcher(url, {
+    const response = await fetcher(url, {
       ...init,
       headers: {
         Accept: 'application/vnd.github+json',
@@ -15,9 +15,11 @@ export async function githubRequest(fetcher, url, token, init = {}) {
         Authorization: `Bearer ${token}`,
         ...(init.headers || {}),
       },
-      redirect: 'error',
+      redirect: 'manual',
       signal: AbortSignal.timeout(15_000),
     });
+    if (response.status >= 300 && response.status < 400) { await discard(response); fail(503); }
+    return response;
   } catch { fail(503); }
 }
 async function discard(response) {
@@ -39,10 +41,11 @@ export async function verifyGithubOwner(config, state, code, fetcher = fetch) {
           redirect_uri: state.redirectUri,
           code_verifier: state.verifier,
         }).toString(),
-        redirect: 'error',
+        redirect: 'manual',
         signal: AbortSignal.timeout(15_000),
       });
     } catch { fail(503); }
+    if (exchange.status >= 300 && exchange.status < 400) { await discard(exchange); fail(503); }
     if (!exchange.ok) { await discard(exchange); fail(401); }
     const result = await readJSON(exchange, 16 * 1024, 503);
     if (!result || typeof result.access_token !== 'string' || result.access_token.length > 4096 || !/^[A-Za-z0-9_]+$/u.test(result.access_token)) fail(401);

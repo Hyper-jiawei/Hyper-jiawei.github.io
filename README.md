@@ -28,12 +28,13 @@
 截至 2026-11-25：
 
 - 页面、财务计算、银行卡记录、加密模块和验证服务代码已完成。
-- Cloudflare 已完成账户授权，验证服务已部署到 `https://income-auth.hyper-jiawei.workers.dev`；生产浏览器检查 `/health` 返回 `{"ready":false}`。
-- 前端已配置该验证服务地址，尚未就绪时保持登录关闭。
+- Cloudflare 已完成账户授权，验证服务已部署到 `https://income-auth.hyper-jiawei.workers.dev`；生产检查 `/health` 返回 `{"ready":true}`。
+- 前端已配置该验证服务地址，生产登录入口已开放；左上角使用本地保存的 GitHub 头像，不在登录或财务操作时向头像服务发送请求。
 - 私人数据仓库 `Hyper-jiawei/v0` 已创建，没有描述，没有上传真实财务数据。
-- GitHub OAuth App、专用仓库令牌以及 Mac / iPhone 实机 Passkey 验收尚未完成。
+- GitHub OAuth App 及三个 Cloudflare Secret 已配置；实际 GitHub 登录、专用仓库令牌读写以及 Mac / iPhone 实机 Passkey 解密验收仍未完成。健康检查不代表这些验收已通过。
+- 已修正 Cloudflare 不支持 `redirect: 'error'` 导致 OAuth 回调报错的问题。GitHub 请求改用 `redirect: 'manual'`，收到重定向时拒绝，不跟随重定向或转发凭据。
 - 验证服务不具备完整配置时返回未就绪；前端不会开放登录，不提供演示账号或绕过验证的入口。
-- 90 项自动化测试通过；桌面、手机尺寸的浏览器流程通过；真实 WebAuthn 签名和 PRF 加密已用 Chrome 虚拟认证器验证。虚拟认证器不代表实际 Apple 设备已通过验收。
+- 93 项自动化测试通过；桌面、手机尺寸的浏览器流程通过；真实 WebAuthn 签名和 PRF 加密已用 Chrome 虚拟认证器验证。另在实际 workerd 运行环境验证了模拟上游的 OAuth 交换、身份检查、空保险箱读取和重定向拒绝。虚拟认证器和模拟上游不代表实际 Apple 设备或 GitHub 凭据已通过验收。
 
 ### 架构与数据边界
 

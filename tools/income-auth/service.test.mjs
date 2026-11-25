@@ -210,11 +210,31 @@ test('OAuth cookie mismatch does not consume state; successful callback is owner
   assert.equal((await f.callback(start)).status, 401);
   const identityRequest = f.calls.find(call => call.url === 'https://api.github.com/user');
   assert.equal(identityRequest.init.headers.Authorization, 'Bearer test_identity_token');
+  assert.equal(identityRequest.init.redirect, 'manual');
   const exchangeRequest = f.calls.find(call => call.url === 'https://github.com/login/oauth/access_token');
   assert.equal(new URLSearchParams(exchangeRequest.init.body).get('code_verifier').length, 43);
+  assert.equal(exchangeRequest.init.redirect, 'manual');
   const dump = JSON.stringify(recordDump(f.store));
   for (const secret of ['test_identity_token', ENV.GITHUB_CLIENT_SECRET, ENV.STORE_TOKEN]) assert.equal(dump.includes(secret), false);
 });
+for (const [name, target] of [['OAuth exchange', 'https://github.com/login/oauth/access_token'], ['GitHub identity', 'https://api.github.com/user'], ['private repository', ROOT]]) {
+  test(`${name} rejects redirects without forwarding credentials`, async t => {
+    for (const status of [301, 302, 303, 307, 308]) {
+      const f = fixture(t, { fetcher: (url, init, fallback) => {
+        assert.equal(init.redirect, 'manual');
+        assert.doesNotThrow(() => new Request(url, init));
+        return url === target ? new Response(null, { status, headers: { Location: 'https://unexpected.invalid' } }) : fallback(url, init);
+      } });
+      const response = target === ROOT
+        ? await f.call('/vault', { token: await f.issue('session') })
+        : await f.callback(await f.start());
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), { error: 'Service unavailable' });
+      assert.equal(f.calls.at(-1).url, target);
+      assert.equal(f.calls.some(call => call.url === 'https://unexpected.invalid'), false);
+    }
+  });
+}
 test('concurrent callback replay has only one winner before the external exchange', async t => {
   const f = fixture(t);
   const start = await f.start();
