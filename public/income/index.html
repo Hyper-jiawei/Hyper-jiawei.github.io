@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https:; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#f5f3ee">
+  <title>Income</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body data-pagefind-ignore>
+  <header class="header"><a class="brand" href="./" aria-label="Income home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 36 36" width="32" height="32"><path d="M18 3V33M3 18H33M7.4 7.4L28.6 28.6M7.4 28.6L28.6 7.4" stroke="currentColor" stroke-width="3"/></svg></span> income</a><div class="header-actions" id="header-actions" hidden><span class="status" id="save-status">Published</span><button class="button quiet" id="lock">Lock</button></div></header>
+  <main id="root">
+    <section class="login"><span class="eyebrow">YOUR PRIVATE LEDGER</span><h1>A little clarity.<br>A lot of possibility.</h1><p>Income, spending, and what comes next.</p><button class="button primary" id="sign-in" disabled>Sign in with GitHub</button><div class="login-state" id="login-state" role="status">Checking secure service</div><div class="login-footer">GitHub identity <span>·</span> Passkey verification <span>·</span> Encrypted storage</div></section>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button class="button quiet" id="dialog-close" aria-label="Close dialog">×</button></div><div id="dialog-content"></div><div class="dialog-actions" id="dialog-actions"></div></dialog>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "income-auth",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "AUTH", "class_name": "IncomeAuth" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["IncomeAuth"] }
+  ],
+  "vars": {
+    "APP_ORIGIN": "https://hyper-jiawei.github.io",
+    "RP_ID": "hyper-jiawei.github.io",
+    "OWNER_ID": "209197935",
+    "STORE_OWNER": "Hyper-jiawei",
+    "STORE_REPO": "v0",
+    "STORE_BRANCH": "main"
+  },
+  "observability": { "enabled": false },
+  "dev": { "ip": "127.0.0.1", "port": 8787, "local_protocol": "https" }
+}
