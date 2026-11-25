@@ -38,9 +38,21 @@
       <button id="restore" class="quiet">恢复本机草稿</button>
     </section>
 
+    <section id="history" class="panel">
+      <div class="section-title"><h2>往期专辑</h2><button id="refreshAlbums" class="quiet" disabled>刷新列表</button></div>
+      <p id="historyStatus" class="muted" role="status" aria-live="polite">连接 GitHub 并通过目标仓库写入权限检查后，才能读取和管理专辑。</p>
+      <div id="albumList"></div>
+      <p class="muted">列表读取当前所选仓库与分支。编辑或删除会创建新的 Git 提交；Git 历史和分仓中的原图保留，不会删除原图库仓库。</p>
+    </section>
+
     <section id="editor" class="panel" hidden>
       <div class="section-title"><h2 id="editorTitle">照片与文案</h2><span id="selectionDate" role="status"></span></div>
       <p id="selectionTitle" class="selection-title"></p>
+      <div id="editActions" hidden>
+        <p class="muted">旧照片无需重新上传。移除只影响本次保存后的版本；专辑名称、日期及其他原有设置保持不变。</p>
+        <label class="picker"><strong>向专辑添加照片</strong><small>支持多选，原有照片会保留</small><input id="addPhotos" aria-label="向专辑添加照片" type="file" accept="image/*,.heic,.heif,.tif,.tiff" multiple></label>
+        <button id="cancelEdit" class="quiet">取消编辑</button>
+      </div>
       <details id="albumExtras" class="inline-details" hidden>
         <summary>添加专辑分类或简介（可选）</summary>
         <label>分类<input id="categories" placeholder="街拍，人文"></label>

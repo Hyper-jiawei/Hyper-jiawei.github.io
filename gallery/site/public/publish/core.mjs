@@ -138,9 +138,11 @@ export function validate(album, photos) {
     const stem = p.file.replace(/\.[^.]+$/,'');
     if (!stem.trim() || names.has(stem)) throw Error('照片标题重复或为空：' + stem);
     names.add(stem);
-    if (p.blob.size >= 100 * 1024 ** 2) throw Error(p.file + ' 超过单文件 100 MiB 限制');
+    const size = p.blob?.size ?? p.remote?.size;
+    if (!Number.isInteger(size) || size < 1) throw Error(p.file + ' 没有有效原图');
+    if (size >= 100 * 1024 ** 2) throw Error(p.file + ' 超过单文件 100 MiB 限制');
   }
-  if (photos.reduce((n,p)=>n+p.blob.size,0) >= ARCHIVE_BUDGET) throw Error('单辑请控制在 800 MiB 以内');
+  if (photos.reduce((n,p)=>n+(p.blob?.size ?? p.remote?.size),0) >= ARCHIVE_BUDGET) throw Error('单辑请控制在 800 MiB 以内');
   if (photos.filter(p=>p.cover).length !== 1) throw Error('请选择一张封面');
 }
 export function configFor(album, photos) {
