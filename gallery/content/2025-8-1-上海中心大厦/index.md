@@ -4,7 +4,9 @@ date: 2025-08-01
 categories:
   - 人文
 showPalette: true
-description: ''
+description: |-
+  2025 年的夏天，我依旧待在陆家嘴实习，住在浦东大道 2516 号的公寓楼。
+  呆在 8 月的上海，度过了一个充实的夏天。
 resources:
   - src: 上海之巅看上海.HEIC
     params:
@@ -15,9 +17,9 @@ resources:
       captureDate: 2025-08-13
   - src: 飞往北京的空客 330.HEIC
     params:
-      cover: true
       description: 桃，梨
       captureDate: 2025-08-20
+      cover: true
   - src: 吉隆坡.HEIC
     params:
       description: 晚上下班总会去吉隆坡买点水果
