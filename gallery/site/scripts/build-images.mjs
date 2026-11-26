@@ -711,10 +711,17 @@ async function main() {
           if (compatibleOriginal && !compatibleOriginal.endsWith('.webp')) await fs.rm(path.join(ROOT, 'public', compatibleOriginal), { force: true });
         } else if (PAGES) {
           if ((await fs.stat(localOriginal)).size > PAGES_FILE_LIMIT) {
-            const commit = process.env.CF_PAGES_COMMIT_SHA;
-            if (!/^[a-f0-9]{40}$/.test(commit ?? '')) throw new Error('Cloudflare Pages requires a Git commit SHA for oversized originals');
             const filename = [album.dir, photo.file].map(encodeURIComponent).join('/');
-            const url = `https://raw.githubusercontent.com/Hyper-jiawei/Hyper-jiawei.github.io/${commit}/gallery/content/${filename}`;
+            const r2Base = (process.env.R2_PUBLIC_BASE ?? '').replace(/\/+$/, '');
+            let url;
+            if (r2Base) {
+              if (!/^https:\/\/[a-z0-9.-]+$/i.test(r2Base)) throw new Error('R2_PUBLIC_BASE must be a bare https origin');
+              url = `${r2Base}/albums/${filename}`;
+            } else {
+              const commit = process.env.CF_PAGES_COMMIT_SHA;
+              if (!/^[a-f0-9]{40}$/.test(commit ?? '')) throw new Error('Cloudflare Pages requires R2_PUBLIC_BASE or a Git commit SHA for oversized originals');
+              url = `https://raw.githubusercontent.com/Hyper-jiawei/Hyper-jiawei.github.io/${commit}/gallery/content/${filename}`;
+            }
             photo.original = { ...photo.original, url };
             photo.displayOriginal ??= photo.srcset.at(-1);
             await fs.rm(localOriginal);

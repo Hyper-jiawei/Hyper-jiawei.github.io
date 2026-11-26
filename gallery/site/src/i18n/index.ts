@@ -1,5 +1,5 @@
-export const BASE = "/gallery";
-export const withoutBase = (path: string) => path === BASE ? "/" : path.startsWith(BASE + "/") ? path.slice(BASE.length) : path;
+export const BASE = (import.meta.env?.BASE_URL ?? "/gallery").replace(/\/+$/, "");
+export const withoutBase = (path: string) => !BASE ? path : path === BASE ? "/" : path.startsWith(BASE + "/") ? path.slice(BASE.length) : path;
 // The site speaks three languages: Chinese (the original), English and Japanese. Everything
 // the visitor reads as chrome — navigation, labels, counts, dates, screen-reader text — lives
 // here; the photographs and album titles are the work itself and are never translated.

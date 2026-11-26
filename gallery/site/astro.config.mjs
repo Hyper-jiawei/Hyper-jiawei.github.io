@@ -8,10 +8,11 @@ import { modulePreloads } from "./scripts/module-preloads.mjs";
 const privatePaths = gallery.albums.filter((a) => a.private).map((a) => `/${encodeURI(a.slug)}/`);
 const deployment = process.env.CF_PAGES_URL ? new URL(process.env.CF_PAGES_URL) : null;
 if (deployment?.hostname.endsWith(".pages.dev")) deployment.hostname = deployment.hostname.split(".").slice(-3).join(".");
+const base = process.env.GALLERY_BASE ?? "/gallery";
 
 export default defineConfig({
-  site: new URL("/gallery", process.env.GALLERY_SITE_ORIGIN ?? deployment?.origin ?? "https://hyper-jiawei.github.io").href,
-  base: "/gallery",
+  site: new URL(base, process.env.GALLERY_SITE_ORIGIN ?? deployment?.origin ?? "https://hyper-jiawei.github.io").href,
+  base,
   output: "static",
   trailingSlash: "always",
   build: { format: "directory" },
@@ -29,7 +30,7 @@ export default defineConfig({
     }],
   },
   integrations: [
-    modulePreloads("/gallery/"),
+    modulePreloads(base === "/" ? "/" : base + "/"),
     sitemap({
       // Error pages and private albums are built but never advertised.
       filter: (page) =>

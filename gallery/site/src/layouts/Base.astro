@@ -5,7 +5,7 @@ import Footer from "../components/Footer.astro";
 import BackButton from "../components/BackButton.astro";
 import BackToTop from "../components/BackToTop.astro";
 import { site } from "../site.config";
-import { categoriesPath, homePath, langTag, localeSwitch, locales, t, defaultLang, type Lang } from "../i18n";
+import { BASE, categoriesPath, homePath, langTag, localeSwitch, locales, t, withoutBase, defaultLang, type Lang } from "../i18n";
 import "../styles/global.css";
 // Ship viewer geometry with the page, before any click can initialize PhotoSwipe.
 import "photoswipe/style.css";
@@ -34,7 +34,7 @@ const { backTo, title, description, image, noindex = false, hero = false, tone, 
 const tr = t(lang);
 const fullTitle = title ? `${title} · ${site.title}` : site.title;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const path = decodeURI(Astro.url.pathname).replace(/^\/gallery(?=\/|$)/, "") || "/";
+const path = withoutBase(decodeURI(Astro.url.pathname)) || "/";
 // The page without its language prefix, so the rules below read the same in every language.
 const bare = path.startsWith(`/${lang}/`) && lang !== defaultLang ? path.slice(lang.length + 1) : path;
 // Where "back" goes when there is no earlier page on this site to return to.
@@ -60,10 +60,10 @@ const ogLocale: Record<Lang, string> = { zh: "zh_CN", en: "en_US", ja: "ja_JP" }
     {alternates && locales.map((l) => <link rel="alternate" hreflang={langTag[l]} href={new URL(localeSwitch(Astro.url.pathname, l), Astro.site).href} />)}
     {alternates && <link rel="alternate" hreflang="x-default" href={new URL(localeSwitch(Astro.url.pathname, defaultLang), Astro.site).href} />}
     {noindex && <meta name="robots" content="noindex, nofollow" />}
-    <link rel="icon" href="/gallery/images/favicon.png?v=n-tick-4" type="image/png" sizes="32x32" />
-    <link rel="icon" href="/gallery/images/favicon.svg?v=n-tick-4" type="image/svg+xml" sizes="any" />
-    <link rel="apple-touch-icon" href="/gallery/images/apple-touch-icon.png?v=n-tick-4" sizes="180x180" />
-    <link rel="alternate" type="application/rss+xml" title={site.title} href="/gallery/index.xml" />
+    <link rel="icon" href={`${BASE}/images/favicon.png?v=n-tick-4`} type="image/png" sizes="32x32" />
+    <link rel="icon" href={`${BASE}/images/favicon.svg?v=n-tick-4`} type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href={`${BASE}/images/apple-touch-icon.png?v=n-tick-4`} sizes="180x180" />
+    <link rel="alternate" type="application/rss+xml" title={site.title} href={`${BASE}/index.xml`} />
     <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#ebe7df" media="(prefers-color-scheme: light)" />
     <meta property="og:site_name" content={site.title} />
@@ -74,7 +74,7 @@ const ogLocale: Record<Lang, string> = { zh: "zh_CN", en: "en_US", ja: "ja_JP" }
     <meta property="og:locale" content={ogLocale[lang]} />
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
-    <script is:inline>
+    <script is:inline define:vars={{ base: BASE }}>
       (function () {
         var d = document.documentElement;
         d.classList.add("js");
@@ -106,7 +106,7 @@ const ogLocale: Record<Lang, string> = { zh: "zh_CN", en: "en_US", ja: "ja_JP" }
         // from the very first paint, so the celebration has the screen to itself. The safety
         // timer reveals it if the inline celebration cannot run.
         try {
-          if (/^\/gallery\/(en|ja)?\/?egg\/$/.test(location.pathname) && sessionStorage.getItem("egg-arrival") === "1") {
+          if (new RegExp("^" + base + "/(en|ja)?/?egg/$").test(location.pathname) && sessionStorage.getItem("egg-arrival") === "1") {
             sessionStorage.removeItem("egg-arrival");
             d.classList.add("is-celebrating");
             setTimeout(function () { d.classList.remove("is-celebrating"); }, 6000);

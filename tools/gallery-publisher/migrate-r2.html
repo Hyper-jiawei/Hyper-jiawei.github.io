@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Gallery → Cloudflare R2 迁移</title>
+<style>
+  :root { color-scheme: light; --bg: #faf9f5; --fg: #1f1e1b; --muted: #6f6a5e; --line: #e4dfd3; --accent: #b4552d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.7 -apple-system, "PingFang SC", "Noto Sans SC", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font: 600 28px/1.3 "Songti SC", "Noto Serif SC", serif; margin: 0 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 32px; }
+  label { display: block; font-weight: 600; margin: 20px 0 6px; }
+  input[type="url"], input[type="password"] { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; }
+  input[type="file"] { font: inherit; }
+  .hint { color: var(--muted); font-size: 13.5px; margin: 4px 0 0; }
+  button { margin-top: 28px; padding: 12px 28px; border: 0; border-radius: 999px; background: var(--fg); color: var(--bg); font: 600 16px inherit; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  #log { margin-top: 28px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font: 13px/1.8 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 420px; overflow-y: auto; }
+  #log:empty { display: none; }
+  .ok { color: #2e7d32; } .err { color: #c62828; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Gallery → Cloudflare R2 迁移</h1>
+  <p class="sub">把本机 gallery/content 里的专辑（index.md 与全部原图）直传到 Cloudflare R2。令牌只发送给你填写的 Worker，不经过任何第三方，也不会被保存。</p>
+
+  <label for="worker">上传服务地址（Worker URL）</label>
+  <input id="worker" type="url" placeholder="https://life-hyper-api.你的子域.workers.dev" autocomplete="off" spellcheck="false">
+  <p class="hint">部署 gallery/worker/storage-api.mjs 后得到的地址，不带 /api 后缀。</p>
+
+  <label for="token">发布令牌（AUTH_TOKEN）</label>
+  <input id="token" type="password" autocomplete="off">
+  <p class="hint">与 Worker 环境变量 AUTH_TOKEN 完全一致。</p>
+
+  <label for="folder">选择 gallery/content 文件夹</label>
+  <input id="folder" type="file" webkitdirectory multiple>
+  <p class="hint">每个子文件夹即一个专辑，需包含 index.md；只上传顶层原图，忽略 _preview 等派生文件。</p>
+
+  <button id="start" disabled>开始迁移</button>
+  <div id="log" aria-live="polite"></div>
+</main>
+<script type="module">
+const $ = id => document.getElementById(id);
+const log = $('log');
+const IMAGE = /\.(jpe?g|png|webp|tiff?|heic|heif)$/i;
+const say = (text, cls = '') => { const line = document.createElement('span'); if (cls) line.className = cls; line.textContent = text + '\n'; log.append(line); log.scrollTop = log.scrollHeight; };
+
+function ready() {
+  const base = $('worker').value.trim().replace(/\/+$/, '');
+  const valid = /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(base) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base);
+  $('start').disabled = !(valid && $('token').value && $('folder').files.length);
+}
+for (const id of ['worker', 'token', 'folder']) $(id).addEventListener('input', ready);
+
+function client(base, token) {
+  return async (method, path, body, headers = {}) => {
+    const response = await fetch(base + '/api' + path, {
+      method,
+      headers: { Authorization: 'Bearer ' + token, ...(body != null ? { 'Content-Type': body instanceof Blob ? (body.type || 'application/octet-stream') : 'text/plain;charset=utf-8' } : {}), ...headers },
+      ...(body != null ? { body } : {}),
+    });
+    if (!response.ok) {
+      let message = ''; try { message = (await response.json()).message; } catch {}
+      const error = Error(message || 'HTTP ' + response.status); error.status = response.status; throw error;
+    }
+    return response;
+  };
+}
+
+function albumsOf(files) {
+  const groups = new Map();
+  for (const file of files) {
+    // webkitRelativePath starts with the selected folder's own name: content/<slug>/<file>.
+    const parts = file.webkitRelativePath.split('/');
+    if (parts.length < 3) continue;
+    const slug = parts[1];
+    if (!groups.has(slug)) groups.set(slug, { slug, config: null, photos: [] });
+    const album = groups.get(slug);
+    if (parts.length === 3 && parts[2] === 'index.md') album.config = file;
+    else if (parts.length === 3 && IMAGE.test(parts[2]) && !parts[2].startsWith('.')) album.photos.push(file);
+  }
+  return [...groups.values()].sort((a, b) => a.slug.localeCompare(b.slug, 'zh'));
+}
+
+$('start').addEventListener('click', async () => {
+  const base = $('worker').value.trim().replace(/\/+$/, ''), token = $('token').value;
+  const albums = albumsOf([...$('folder').files]);
+  $('start').disabled = true;
+  const api = client(base, token);
+  let uploaded = 0, skipped = 0, failed = 0;
+  try {
+    await api('GET', '/check');
+    say('✓ 写入权限检查通过', 'ok');
+  } catch (error) {
+    say('✗ 连接失败：' + error.message + '（请检查地址与令牌）', 'err');
+    $('start').disabled = false; return;
+  }
+  const incomplete = albums.filter(a => !a.config || !a.photos.length);
+  for (const a of incomplete) say('– 跳过 ' + a.slug + '（缺少 index.md 或原图）');
+  for (const album of albums.filter(a => a.config && a.photos.length)) {
+    say('▶ ' + album.slug + '（' + album.photos.length + ' 张原图）');
+    try {
+      let match = '*', remote = new Map();
+      try {
+        const current = await (await api('GET', '/albums/' + encodeURIComponent(album.slug))).json();
+        match = current.etag;
+        remote = new Map(current.photos.map(p => [p.name, p.size]));
+        say('  云端已有该专辑，将更新配置并补齐原图');
+      } catch (error) { if (error.status !== 404) throw error; }
+      for (const [index, file] of album.photos.entries()) {
+        const name = file.name;
+        if (remote.has(name)) {
+          if (remote.get(name) !== file.size) throw Error('云端同名原图大小不一致：' + name);
+          skipped++; say('  = ' + (index + 1) + '/' + album.photos.length + ' ' + name + '（已存在，跳过）');
+          continue;
+        }
+        try {
+          await api('PUT', `/albums/${encodeURIComponent(album.slug)}/${encodeURIComponent(name)}`, file);
+        } catch (error) {
+          if (error.status !== 409) throw error;
+          const current = await (await api('GET', '/albums/' + encodeURIComponent(album.slug))).json();
+          const existing = current.photos.find(p => p.name === name);
+          if (!existing || existing.size !== file.size) throw Error('云端同名原图大小不一致：' + name);
+          skipped++; say('  = ' + name + '（其他设备已上传，跳过）');
+          continue;
+        }
+        uploaded++; say('  ↑ ' + (index + 1) + '/' + album.photos.length + ' ' + name + '（' + (file.size / 1048576).toFixed(1) + ' MiB）');
+      }
+      const config = await album.config.text();
+      await api('PUT', '/albums/' + encodeURIComponent(album.slug), config, { 'If-Match': match });
+      say('✓ ' + album.slug + ' 完成，已触发图库重建', 'ok');
+    } catch (error) {
+      failed++; say('✗ ' + album.slug + ' 失败：' + error.message, 'err');
+    }
+  }
+  say(`\n迁移结束：上传 ${uploaded} 张，跳过 ${skipped} 张，失败 ${failed} 个专辑。失败的可直接重跑本工具续传。`, failed ? 'err' : 'ok');
+  $('start').disabled = false;
+});
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import exifr from 'exifr';
-import {configFor,validate,blobSha,base64,github,chooseArchive,commitFiles,publish,MAIN,MAIN_BUDGET,settingsFor,checkRepository,enableHeicBrands,readPhotoDate,selectedFiles,publicationFor} from '../public/publish/core.mjs';
+import {configFor,validate,storage,PHOTO_LIMIT,ALBUM_LIMIT,enableHeicBrands,readPhotoDate,selectedFiles,publicationFor} from '../public/publish/core.mjs';
 const album={title:'手机一辑',slug:'2026-11-02-phone',date:'2026-11-02',categories:[],description:''};
 const photo=()=>({file:'一张.HEIC',blob:new Blob(['camera original']),description:'',cover:true});
 test('mobile config omits unselected featured, permits empty descriptions, and validates renamed files',()=>{
@@ -56,7 +56,7 @@ test('capture date prefers original EXIF, falls back to EXIF creation, and never
 test('reads WebP embedded EXIF without using file timestamps',async()=>{
   const tiff=Buffer.alloc(70);
   tiff.write('II',0);tiff.writeUInt16LE(42,2);tiff.writeUInt32LE(8,4);
-  tiff.writeUInt16LE(1,8);tiff.writeUInt16LE(0x8769,10);tiff.writeUInt16LE(4,12);tiff.writeUInt32LE(1,14);tiff.writeUInt32LE(26,18);
+  tiff.writeUInt16LE(1,8);tiff.writeUInt16LE(0x8769,10);tiff.writeUInt16LE(4,12);tiff.writeUInt32LE(1,14);tiff.writeUInt16LE(26,18);
   tiff.writeUInt16LE(1,26);tiff.writeUInt16LE(0x9003,28);tiff.writeUInt16LE(2,30);tiff.writeUInt32LE(20,32);tiff.writeUInt32LE(44,36);
   tiff.write('2025:08:01 12:10:50\0',44);
   const webp=Buffer.alloc(20);
@@ -76,101 +76,35 @@ test('accepts the longer ftyp header used by newer iPhone HEIC originals',()=>{
   assert.equal(parser.canHandle(input,0),false);
 });
 
-test('browser encodes original bytes losslessly and hashes Git blobs correctly',async()=>{
-  assert.equal(await base64(new Blob(['中文 HEIC'])) ,Buffer.from('中文 HEIC').toString('base64'));
-  const crypto=await import('node:crypto');const b=Buffer.from('camera original');
-  assert.equal(await blobSha(photo().blob),crypto.createHash('sha1').update(`blob ${b.length}\0`).update(b).digest('hex'));
+test('size limits match the Worker free-tier request budget',()=>{
+  assert.equal(PHOTO_LIMIT,95*1024**2);
+  assert.equal(ALBUM_LIMIT,1024**3);
+  assert.throws(()=>validate(album,[{...photo(),blob:undefined,remote:{size:PHOTO_LIMIT+1,etag:'"a"'}}]),/95 MiB/);
 });
-test('token only goes to GitHub API and rejected requests do not expose it',async()=>{
-  let request;const api=github('never-store-secret',async(url,opts)=>{request={url,opts};return {ok:false,status:403,json:async()=>({message:'No access'})};});
-  await assert.rejects(api('GET','/user'),/GitHub 403/);
-  assert.equal(request.url,'https://api.github.com/user');assert.equal(request.opts.headers.Authorization,'Bearer never-store-secret');
+
+test('the token only travels to the same-origin /api proxy, with the right content type per body',async()=>{
+  const calls=[];
+  const request=async(url,opts)=>{calls.push({url,opts});return new Response('{}');};
+  const api=storage('never-store-secret',request);
+  await api('GET','/albums');
+  await api('PUT','/albums/t/a.jpg',new Blob(['bytes'],{type:'image/heic'}));
+  await api('PUT','/albums/t','---\n---\n',{'If-Match':'"etag"'});
+  await api('DELETE','/albums/t',null,{'If-Match':'"etag"'});
+  assert.deepEqual(calls.map(c=>c.url),['/api/albums','/api/albums/t/a.jpg','/api/albums/t','/api/albums/t']);
+  assert.ok(calls.every(c=>c.opts.headers.Authorization==='Bearer never-store-secret'));
+  assert.equal(calls[1].opts.headers['Content-Type'],'image/heic');
+  assert.equal(calls[2].opts.headers['Content-Type'],'text/plain;charset=utf-8');
+  assert.equal(calls[2].opts.headers['If-Match'],'"etag"');
+  assert.ok(!('body' in calls[3].opts));
 });
-test('mobile archive allocator uses public repositories and skips private/full ones',async()=>{
-  const created=[];const repo=(name,priv,size)=>({name,private:priv,size,full_name:'Hyper-jiawei/'+name,default_branch:'main',owner:{login:'Hyper-jiawei'}});
-  const api=async(method,path,body)=>{
-    if(method==='GET'&&path.startsWith('/user/repos'))return [repo('gallery01',false,900*1024),repo('gallery02',true,1)];
-    if(path==='/user')return {login:'Hyper-jiawei',type:'User'};
-    if(method==='GET')return repo('gallery03',false,0);
-    if(path==='/user/repos'){created.push(body);return repo(body.name,false,0);}
-    return {sha:'probe'};
-  };
-  assert.equal((await chooseArchive(api,100)).repo,'Hyper-jiawei/gallery03');assert.equal(created[0].private,false);
-});
-function fake(tree=[]) {
-  const calls=[], commits=[],blobs=new Map();let n=0;
-  const api=async(method,path,body)=>{
-    calls.push({method,path,body});
-    if(path==='/user')return {login:'Hyper-jiawei',type:'User'};
-    if(method==='GET'&&/^\/repos\/[^/]+\/[^/]+$/.test(path))return {full_name:path.slice(7),default_branch:'main',private:false,size:0,permissions:{push:true}};
-    if(path.startsWith('/user/repos')) return [{name:'gallery01',private:false,size:0,full_name:'Hyper-jiawei/gallery01',default_branch:'main',owner:{login:'Hyper-jiawei'}}];
-    if(path.includes('/git/ref/'))return {object:{sha:'head'}};
-    if(method==='GET' && path.includes('/git/commits/'))return {tree:{sha:'tree'}};
-    if(method==='GET' && path.includes('/git/trees/'))return {tree:path.includes(MAIN)?tree:[],truncated:false};
-    if(path.endsWith('/git/blobs')){const data=new Blob([Buffer.from(body.content,body.encoding==='base64'?'base64':'utf8')]),sha=await blobSha(data);blobs.set(sha,await data.text());return {sha};}
-    if(path.endsWith('/git/trees'))return {sha:'newtree'};
-    if(path.endsWith('/git/commits')){const commit={sha:String(++n).padStart(40,'a')};commits.push(commit);return commit;}
-    if(method==='PATCH')return {};
-    throw Error(path);
-  };return {api,calls,blobs};
-}
-test('phone publishing is one atomic album commit and never touches other albums',async()=>{
-  const f=fake([{path:'gallery/content/other/原图.jpg',type:'blob',size:3,sha:'old'}]);
-  await publish(f.api,album,[photo()],false);
-  const change=f.calls.find(c=>c.method==='POST'&&c.path.endsWith('/git/trees')).body;
-  assert.equal(change.base_tree,'tree');assert.equal(change.tree.length,2);assert.ok(change.tree.every(e=>e.path.startsWith('gallery/content/'+album.slug+'/')));
-  assert.equal(f.calls.filter(c=>c.method==='PATCH').length,1);
-});
-test('large phone albums split originals into archive and publish only config and pinned sources in main',async()=>{
-  const f=fake([{path:'gallery/content/old/big.jpg',type:'blob',size:MAIN_BUDGET,sha:'old'}]);
-  const result=await publish(f.api,album,[photo()],false);
-  assert.equal(result.archive,'Hyper-jiawei/gallery01');
-  const changes=f.calls.filter(c=>c.method==='POST'&&c.path.endsWith('/git/trees'));
-  assert.ok(changes[0].path.includes('gallery01'));
-  assert.deepEqual(changes[1].body.tree.map(e=>e.path.split('/').pop()).sort(),['_sources.json','index.md']);
-  const sources=JSON.parse(f.blobs.get(changes[1].body.tree.find(e=>e.path.endsWith('_sources.json')).sha));
-  assert.equal(sources.files[0].sha,await blobSha(photo().blob));assert.match(sources.commit,/^[a-f0-9]{40}$/);
-});
-test('concurrent remote change prevents branch update and deletion stays scoped',async()=>{
-  const f=fake();const api=async(method,path,body)=>method==='GET'&&path.includes('/git/ref/')?{object:{sha:'changed'}}:f.api(method,path,body);
-  await assert.rejects(commitFiles(api,MAIN,'main',{sha:'head',treeSha:'tree',tree:[]},[{name:'index.md',blob:new Blob(['new'])}],'gallery/content/a/'),/远端有新提交/);
-  assert.equal(f.calls.filter(c=>c.method==='PATCH').length,0);
+
+test('rejected requests map to actionable Chinese errors without exposing the token',async()=>{
+  const reply=status=>async()=>new Response(JSON.stringify({message:'denied'}),{status});
+  await assert.rejects(storage('secret',reply(401))('GET','/albums'),error=>/denied（401）/.test(error.message)&&/发布令牌/.test(error.message)&&error.status===401&&!error.message.includes('secret'));
+  await assert.rejects(storage('secret',reply(409))('PUT','/albums/t'),error=>/刷新后重试/.test(error.message)&&error.status===409);
+  await assert.rejects(storage('secret',reply(500))('GET','/albums'),error=>/已上传的原图不会丢失/.test(error.message)&&error.status===500);
+  const noContent=await storage('secret',async()=>new Response(null,{status:204}))('DELETE','/albums/t');
+  assert.equal(noContent,null);
 });
 
 test('mobile and Mac generate the same configuration format',async()=>{const fs=await import('node:fs/promises');assert.equal(await fs.readFile(new URL('../public/publish/config.mjs',import.meta.url),'utf8'),await fs.readFile(new URL('../../../tools/gallery-publisher/config.mjs',import.meta.url),'utf8'));});
-
-test('a different account can publish to a chosen repo, branch and path',async()=>{
-  const f=fake(), settings={repository:'Someone/portfolio',branch:'photos',contentPath:'albums',archivePrefix:'work'};
-  const result=await publish(f.api,album,[photo()],false,()=>{},settings);
-  assert.equal(result.repository,'Someone/portfolio');assert.equal(result.branch,'photos');
-  const tree=f.calls.find(c=>c.method==='POST'&&c.path.endsWith('/git/trees'));
-  assert.ok(tree.path.includes('/repos/Someone/portfolio/'));assert.ok(tree.body.tree.every(e=>e.path.startsWith('albums/'+album.slug+'/')));
-  assert.ok(f.calls.some(c=>c.method==='PATCH'&&c.path.endsWith('/heads/photos')));
-});
-test('explicit public archive supports arbitrary name and writes a portable source path',async()=>{
-  const f=fake();const result=await publish(f.api,album,[photo()],false,()=>{},{repository:'Someone/portfolio',contentPath:'pictures',archiveRepository:'Someone/original-photos'});
-  assert.equal(result.archive,'Someone/original-photos');
-  const trees=f.calls.filter(c=>c.method==='POST'&&c.path.endsWith('/git/trees'));
-  const sources=JSON.parse(f.blobs.get(trees[1].body.tree.find(e=>e.path.endsWith('_sources.json')).sha));
-  assert.equal(sources.repository,'Someone/original-photos');assert.equal(sources.path,'pictures/'+album.slug+'/');
-});
-test('preflight rejects a readable repository when the token cannot create blobs',async()=>{
-  const calls=[];const api=async(method,path)=>{calls.push({method,path});if(method==='GET')return {permissions:{push:true},default_branch:'main'};throw Error('Contents: Read and write required');};
-  await assert.rejects(publish(api,album,[photo()],false),/Contents/);assert.equal(calls.length,2);
-});
-test('paths cannot escape their album scope and source archive must differ from target',()=>{
-  for(const contentPath of ['../escape','gallery/../other','gallery//content','folder?x'])assert.throws(()=>settingsFor({contentPath}));
-  assert.throws(()=>settingsFor({archiveRepository:MAIN}));
-});
-test('custom numbered archive creation supports organization accounts',async()=>{
-  const created=[];const api=async(method,path,body)=>{
-    if(path.startsWith('/user/repos?'))return [{owner:{login:'Studio'},name:'work09',full_name:'Studio/work09',private:false,size:9999999}];
-    if(path==='/user')return {login:'Someone',type:'User'};
-    if(path==='/users/Studio')return {login:'Studio',type:'Organization'};
-    if(method==='POST'&&path==='/orgs/Studio/repos'){created.push(body);return {full_name:'Studio/work10',private:false,default_branch:'main'};}
-    if(method==='GET')return {full_name:'Studio/work10',private:false,permissions:{push:true},default_branch:'main'};
-    return {sha:'probe'};
-  };
-  const archive=await chooseArchive(api,1,{repository:'Studio/site',archivePrefix:'work'});
-  assert.equal(archive.repo,'Studio/work10');assert.equal(created[0].name,'work10');assert.equal(created[0].private,false);
-});
