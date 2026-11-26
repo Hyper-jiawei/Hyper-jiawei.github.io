@@ -19,6 +19,8 @@ const CONTENT = path.resolve(ROOT, process.env.GALLERY_CONTENT ?? "../content");
 const OUT_DIR = path.join(ROOT, "public/img");
 const CACHE_FILE = path.join(ROOT, ".cache/images.json");
 const MANIFEST = path.join(ROOT, "src/data/gallery.json");
+const PAGES = process.env.CF_PAGES === "1";
+const PAGES_FILE_LIMIT = 25 * 1024 ** 2;
 
 // 2200 sits between 1600 and 3000 so a ~1000px-wide photo on a 2× screen (the hero,
 // single-photo pages) gets a file that is just big enough instead of the 3000px one —
@@ -696,13 +698,32 @@ async function main() {
     async ({ album, photo, remote }) => {
       try {
         Object.assign(photo, await processImage(remote?.file ?? path.join(CONTENT, album.dir, photo.file), cache, Boolean(remote)));
+        const localOriginal = path.join(ROOT, 'public', photo.original.url);
         if (remote) {
-          const localOriginal = photo.original.url;
-          photo.original = { ...photo.original, url: remote.url };
+          if (PAGES && (await fs.stat(remote.file)).size <= PAGES_FILE_LIMIT) {
+            await fs.copyFile(remote.file, localOriginal);
+          } else {
+            photo.original = { ...photo.original, url: remote.url };
+            await fs.rm(localOriginal, { force: true });
+          }
           const compatibleOriginal = photo.displayOriginal?.url;
           photo.displayOriginal = photo.srcset.at(-1);
-          await fs.rm(path.join(ROOT, 'public', localOriginal), { force: true });
           if (compatibleOriginal && !compatibleOriginal.endsWith('.webp')) await fs.rm(path.join(ROOT, 'public', compatibleOriginal), { force: true });
+        } else if (PAGES) {
+          if ((await fs.stat(localOriginal)).size > PAGES_FILE_LIMIT) {
+            const commit = process.env.CF_PAGES_COMMIT_SHA;
+            if (!/^[a-f0-9]{40}$/.test(commit ?? '')) throw new Error('Cloudflare Pages requires a Git commit SHA for oversized originals');
+            const filename = [album.dir, photo.file].map(encodeURIComponent).join('/');
+            const url = `https://raw.githubusercontent.com/Hyper-jiawei/Hyper-jiawei.github.io/${commit}/gallery/content/${filename}`;
+            photo.original = { ...photo.original, url };
+            photo.displayOriginal ??= photo.srcset.at(-1);
+            await fs.rm(localOriginal);
+          }
+          const display = photo.displayOriginal && path.join(ROOT, 'public', photo.displayOriginal.url);
+          if (display && !photo.displayOriginal.url.endsWith('.webp') && (await fs.stat(display)).size > PAGES_FILE_LIMIT) {
+            await fs.rm(display);
+            photo.displayOriginal = photo.srcset.at(-1);
+          }
         }
       } catch (err) {
         console.error(`\n[gallery] failed: ${album.dir}/${photo.file}: ${err.message}`);

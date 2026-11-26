@@ -1,5 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';import crypto from 'node:crypto';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
-const run=promisify(execFile),site=new URL('../',import.meta.url);
+import sharp from 'sharp';
+const run=promisify(execFile);
 test('mobile split album verifies raw bytes, generates HEIC previews and keeps originals out of Pages',async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'hyper-mobile-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   await fs.mkdir(path.join(root,'scripts'));await fs.mkdir(path.join(root,'content','phone'),{recursive:true});
@@ -10,11 +11,35 @@ test('mobile split album verifies raw bytes, generates HEIC previews and keeps o
   const source=path.join(root,'content/phone/_sources.json');await fs.writeFile(source,JSON.stringify(manifest));
   await fs.writeFile(path.join(root,'content/phone/index.md'),'---\ntitle: "手机"\ndate: 2026-11-02\nresources:\n  - src: 手机.HEIC\n    params:\n      cover: true\n      featured: true\n      description: "来自手机"\n---\n');
   const preload=path.join(root,'fetch.mjs');await fs.writeFile(preload,`globalThis.fetch=async(url)=>{if(!url.startsWith('https://raw.githubusercontent.com/Someone/original-pictures/'))throw Error('Unexpected host');return new Response(Buffer.from('${fixture.toString('base64')}','base64'));};`);
-  const build=()=>run(process.execPath,['--import',preload,path.join(root,'scripts/build-images.mjs')],{env:{...process.env,GALLERY_CONTENT:path.join(root,'content')},timeout:60000});
+  const build=(pages='')=>run(process.execPath,['--import',preload,path.join(root,'scripts/build-images.mjs')],{env:{...process.env,CF_PAGES:pages,GALLERY_CONTENT:path.join(root,'content')},timeout:60000});
   await build();const album=JSON.parse(await fs.readFile(path.join(root,'src/data/gallery.json'))).albums[0],p=album.photos[0];
   assert.match(p.original.url,/^https:\/\/raw.githubusercontent.com\/Someone\/original-pictures\/a{40}\//);assert.equal(p.exif.camera,'HEIC test camera');assert.equal(p.description,'来自手机');assert.equal(p.featured,1);
   assert.ok((await fs.readdir(path.join(root,'public/img',p.key))).every(n=>n.endsWith('.webp')));
+  await build('1');
+  const cloudPhoto=JSON.parse(await fs.readFile(path.join(root,'src/data/gallery.json'))).albums[0].photos[0];
+  assert.match(cloudPhoto.original.url,/^\/img\/[^/]+\/original\.heic$/);
+  assert.match(cloudPhoto.displayOriginal.url,/\.webp$/);
+  assert.deepEqual(await fs.readFile(path.join(root,'public',cloudPhoto.original.url)),fixture);
   await build();
+  await assert.rejects(fs.stat(path.join(root,'public',cloudPhoto.original.url)),{code:'ENOENT'});
   manifest.files[0].sha='b'.repeat(40);await fs.writeFile(source,JSON.stringify(manifest));await assert.rejects(build(),/SHA mismatch/);
   manifest.repository='https://malicious.invalid/repo';await fs.writeFile(source,JSON.stringify(manifest));await assert.rejects(build(),/Invalid original archive manifest/);
+});
+
+test('Cloudflare Pages uses local WebP for zoom when an original exceeds 25 MiB',async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'hyper-pages-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const album=path.join(root,'content','oversized');
+  await fs.mkdir(path.join(root,'scripts'));await fs.mkdir(album,{recursive:true});
+  await fs.symlink(new URL('../node_modules',import.meta.url).pathname,path.join(root,'node_modules'),'dir');
+  for(const name of ['build-images.mjs','heic-input.mjs','featured.mjs'])await fs.copyFile(new URL('./'+name,import.meta.url),path.join(root,'scripts',name));
+  const photo=path.join(album,'大图.png');
+  await sharp({create:{width:24,height:24,channels:3,background:'#fff'}}).png().toFile(photo);
+  await fs.truncate(photo,25*1024**2+1);
+  await fs.writeFile(path.join(album,'index.md'),'---\ntitle: 大图\n---\n');
+  const commit='a'.repeat(40);
+  await run(process.execPath,[path.join(root,'scripts/build-images.mjs')],{env:{...process.env,CF_PAGES:'1',CF_PAGES_COMMIT_SHA:commit,GALLERY_CONTENT:path.join(root,'content')},timeout:60000});
+  const [p]=JSON.parse(await fs.readFile(path.join(root,'src/data/gallery.json'))).albums[0].photos;
+  assert.equal(p.original.url,`https://raw.githubusercontent.com/Hyper-jiawei/Hyper-jiawei.github.io/${commit}/gallery/content/oversized/${encodeURIComponent('大图.png')}`);
+  assert.match(p.displayOriginal.url,/^\/img\/[^/]+\/\d+\.webp$/);
+  assert.ok((await fs.readdir(path.join(root,'public/img',p.key))).every(n=>n.endsWith('.webp')));
 });

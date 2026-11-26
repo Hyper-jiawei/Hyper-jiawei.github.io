@@ -6,9 +6,11 @@ import { fontRanges } from "./scripts/font-ranges.mjs";
 import { modulePreloads } from "./scripts/module-preloads.mjs";
 
 const privatePaths = gallery.albums.filter((a) => a.private).map((a) => `/${encodeURI(a.slug)}/`);
+const deployment = process.env.CF_PAGES_URL ? new URL(process.env.CF_PAGES_URL) : null;
+if (deployment?.hostname.endsWith(".pages.dev")) deployment.hostname = deployment.hostname.split(".").slice(-3).join(".");
 
 export default defineConfig({
-  site: "https://hyper-jiawei.github.io/gallery",
+  site: new URL("/gallery", process.env.GALLERY_SITE_ORIGIN ?? deployment?.origin ?? "https://hyper-jiawei.github.io").href,
   base: "/gallery",
   output: "static",
   trailingSlash: "always",

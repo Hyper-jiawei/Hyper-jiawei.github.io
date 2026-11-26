@@ -93,7 +93,7 @@ function invalidateHistory(){
 }
 function showResult(result){
   $('links').replaceChildren();
-  for(const [label,url] of [['查看提交',result.url],['部署进度',result.actions],['原图分仓',result.archive?'https://github.com/'+result.archive:null]]){
+  for(const [label,url] of [['查看提交',result.url],['GitHub Actions',result.actions],['原图分仓',result.archive?'https://github.com/'+result.archive:null]]){
     if(!url)continue;const a=document.createElement('a');a.href=url;a.textContent=label;a.target='_blank';a.rel='noopener noreferrer';$('links').append(a);
   }
 }
@@ -147,7 +147,7 @@ async function removeAlbum(entry){
   try{
     const result=await deleteAlbum(api,{...target,album:entry});
     if(editing?.album.slug===entry.slug)applySelection({kind:'single'},[]);
-    showResult(result);status('专辑已删除，等待 GitHub Actions 部署；Git 历史和分仓原图保留。');
+    showResult(result);status('删除已提交，等待图库自动部署；Git 历史和分仓原图保留。');
   }finally{busy=false;document.querySelectorAll('button,input,textarea,select').forEach(e=>e.disabled=false);render();}
   await refreshAlbums();
 }
@@ -267,7 +267,7 @@ $('publish').onclick=run(async()=>{
     const result=previous?await updateAlbum(api,previous,current,photos,status,dumpYaml):await publish(api,current,photos,$('allowUpdate').checked,status,target);
     if(previous)applySelection({kind:'single'},[]);
     showResult(result);
-    status(previous?'专辑修改已提交，等待 GitHub Actions 部署。':'提交成功，等待 GitHub Actions 部署。可以继续保存本机草稿。');
+    status(previous?'专辑修改已提交，等待图库自动部署。':'提交成功，等待图库自动部署。可以继续保存本机草稿。');
   }finally{await wake?.release();window.removeEventListener('beforeunload',before);busy=false;document.querySelectorAll('button,input,textarea,select').forEach(e=>e.disabled=false);render();}
   await refreshAlbums();
 });
