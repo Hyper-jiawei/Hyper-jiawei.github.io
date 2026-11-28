@@ -73,7 +73,7 @@ test('publishing a new album uploads originals then creates the config with If-M
   assert.ok(bucket.text('albums/2026-11-02-phone/index.md').startsWith('---\n'));
   const writes = bucket.writes();
   assert.deepEqual(writes.map(c => c.method), ['PUT', 'PUT']);
-  assert.equal(writes[1].options.onlyIf.etagDoesNotMatch, '*');
+  assert.equal(writes[1].options.onlyIf.get('if-none-match'), '*');
   await s.settle(); assert.equal(s.hooks.length, 1); assert.equal(s.hooks[0].options.method, 'POST');
 });
 
@@ -87,7 +87,7 @@ test('same-name album refuses without the update flag before any upload, and upd
   const current = bucket.objects.get('albums/trip/index.md').etag;
   await publishAlbum(s.api, album, [photo], true, () => {}, dump);
   const configWrite = bucket.writes().find(c => c.key === 'albums/trip/index.md');
-  assert.equal(configWrite.options.onlyIf.etagMatches, current);
+  assert.equal(configWrite.options.onlyIf.get('if-match'), current);
   await s.settle();
 });
 
@@ -106,7 +106,7 @@ test('update uploads only new originals, commits config before deleting removed 
   assert.ok(bucket.text('albums/trip-other/index.md'));
   const writes = bucket.writes();
   assert.deepEqual(writes.map(c => c.method + ' ' + (c.key ?? c.keys[0]).replace('albums/trip/', '')), ['PUT new photo 中文.jpg', 'PUT index.md', 'DELETE b.jpg', 'DELETE feature 中文 photo.jpg']);
-  assert.equal(writes[1].options.onlyIf.etagMatches, editing.album.etag);
+  assert.equal(writes[1].options.onlyIf.get('if-match'), editing.album.etag);
   await s.settle(); assert.equal(s.hooks.length, 1);
 });
 

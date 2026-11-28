@@ -78,7 +78,7 @@ export default {
       if (request.method === 'GET' && parts.length === 1 && parts[0] === 'check') {
         // A conditional write that must fail proves the bucket is writable
         // without creating, changing or deleting any object.
-        const probe = await env.BUCKET.put('.write-probe', '', { onlyIf: { etagMatches: '"00000000000000000000000000000000"' } });
+        const probe = await env.BUCKET.put('.write-probe', '', { onlyIf: { etagMatches: '00000000000000000000000000000000' } });
         if (probe) { await env.BUCKET.delete('.write-probe'); return reply(fail(500, '写入检查异常，请重试')); }
         return reply(json({ ok: true, storage: 'cloudflare-r2' }));
       }
@@ -120,7 +120,7 @@ export default {
           if (parts.length === 3) {
             if (body.byteLength < 1 || body.byteLength > PHOTO_LIMIT) return reply(fail(413, '照片为空或超过 95 MiB 上传限制'));
             const written = await env.BUCKET.put(key, body, {
-              onlyIf: { etagDoesNotMatch: '*' },
+              onlyIf: new Headers({ 'if-none-match': '*' }),
               httpMetadata: { contentType: request.headers.get('content-type') ?? 'application/octet-stream' },
             });
             if (!written) return reply(fail(409, '同名原图已存在，不能覆盖：' + parts[2]));
@@ -131,7 +131,7 @@ export default {
           configCheck(text);
           const match = request.headers.get('if-match');
           if (!match) return reply(fail(428, '缺少 If-Match：创建新专辑用 *，更新用加载时的 etag'));
-          const onlyIf = match === '*' ? { etagDoesNotMatch: '*' } : { etagMatches: match };
+          const onlyIf = new Headers({ [match === '*' ? 'if-none-match' : 'if-match']: match });
           const written = await env.BUCKET.put(key, text, { onlyIf, httpMetadata: { contentType: 'text/plain; charset=utf-8' } });
           if (!written) return reply(fail(409, match === '*' ? '同名专辑已存在，请勾选「更新同名作品」' : '专辑已被其他设备修改，请重新加载；不会覆盖别人的更新'));
           rebuild(env, ctx);

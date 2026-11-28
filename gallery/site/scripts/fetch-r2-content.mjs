@@ -9,18 +9,20 @@ import { fileURLToPath } from 'node:url';
 const hmac = (key, data) => crypto.createHmac('sha256', key).update(data).digest();
 const sha256 = data => crypto.createHash('sha256').update(data).digest('hex');
 const EMPTY = sha256('');
+const encode = value => encodeURIComponent(value).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 
 export function signedHeaders({ method, host, pathname, query = '', accessKey, secretKey, now = new Date(), payloadHash = EMPTY }) {
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
   const date = amzDate.slice(0, 8);
   const canonicalQuery = query.split('&').filter(Boolean).map(pair => {
     const [k, v = ''] = pair.split('=');
-    return [encodeURIComponent(decodeURIComponent(k)), encodeURIComponent(decodeURIComponent(v))];
+    return [encode(decodeURIComponent(k)), encode(decodeURIComponent(v))];
   }).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : 1).map(([k, v]) => `${k}=${v}`).join('&');
-  const canonicalPath = pathname.split('/').map(encodeURIComponent).join('/');
+  const canonicalPath = pathname.split('/').map(encode).join('/');
   const headers = { host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate };
   const signed = Object.keys(headers).sort();
-  const canonical = [method, canonicalPath, canonicalQuery, ...signed.map(k => `${k}:${headers[k]}\n`), signed.join(';'), payloadHash].join('\n');
+  const canonicalHeaders = signed.map(k => `${k}:${headers[k]}\n`).join('');
+  const canonical = [method, canonicalPath, canonicalQuery, canonicalHeaders, signed.join(';'), payloadHash].join('\n');
   const scope = `${date}/auto/s3/aws4_request`;
   const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, sha256(canonical)].join('\n');
   const key = hmac(hmac(hmac(hmac('AWS4' + secretKey, date), 'auto'), 's3'), 'aws4_request');
@@ -31,7 +33,8 @@ export async function fetchContent({ accountId, accessKey, secretKey, bucket, co
   const host = `${accountId}.r2.cloudflarestorage.com`;
   async function call(method, pathname, query = '') {
     const headers = signedHeaders({ method, host, pathname, query, accessKey, secretKey });
-    const response = await request(`https://${host}${pathname}${query ? '?' + query : ''}`, { method, headers });
+    const encodedPath = pathname.split('/').map(encode).join('/');
+    const response = await request(`https://${host}${encodedPath}${query ? '?' + query : ''}`, { method, headers });
     if (!response.ok) throw new Error(`R2 ${method} ${pathname} failed: ${response.status} ${await response.text()}`);
     return response;
   }

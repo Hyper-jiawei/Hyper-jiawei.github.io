@@ -39,6 +39,7 @@ test('the write probe proves writability without creating, changing or deleting 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true, storage: 'cloudflare-r2' });
   assert.deepEqual([...bucket.objects.keys()], before);
+  assert.equal(bucket.calls[0].options.onlyIf.etagMatches, '00000000000000000000000000000000');
   assert.ok(bucket.calls.every(c => c.method !== 'DELETE'));
   await s.settle();
 });

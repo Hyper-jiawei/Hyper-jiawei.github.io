@@ -15,9 +15,18 @@ export class FakeBucket {
     this.calls.push({ method: 'PUT', key, options });
     if (this.hook) await this.hook('PUT', key);
     const existing = this.objects.get(key);
-    const onlyIf = options.onlyIf;
+    const conditional = options.onlyIf;
+    const onlyIf = conditional instanceof Headers ? {
+      etagMatches: conditional.get('if-match')?.replace(/^"|"$/g, ''),
+      etagDoesNotMatch: conditional.get('if-none-match')?.replace(/^"|"$/g, ''),
+    } : conditional;
+    if (!(conditional instanceof Headers)) {
+      for (const value of [onlyIf?.etagMatches, onlyIf?.etagDoesNotMatch]) {
+        if (value?.includes('"')) throw Error('Conditional ETag should not be wrapped in quotes');
+      }
+    }
     if (onlyIf?.etagDoesNotMatch === '*' && existing) return null;
-    if (onlyIf?.etagMatches && (!existing || existing.etag !== onlyIf.etagMatches)) return null;
+    if (onlyIf?.etagMatches && (!existing || existing.etag.slice(1, -1) !== onlyIf.etagMatches)) return null;
     const bytes = bytesOf(value);
     const etag = '"' + createHash('md5').update(bytes).digest('hex') + '"';
     this.objects.set(key, { bytes, etag, contentType: options.httpMetadata?.contentType ?? 'application/octet-stream' });

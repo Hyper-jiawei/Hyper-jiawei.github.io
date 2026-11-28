@@ -16,15 +16,35 @@ test('SigV4 headers match an independent derivation for R2 (region auto, service
   const amzDate = '20261125T080910Z', date = '20261125';
   assert.equal(headers['x-amz-date'], amzDate);
   assert.equal(headers['x-amz-content-sha256'], sha256(''));
-  // Independent canonical request: query pairs decoded, re-encoded, sorted; path segments percent-encoded.
   const canonicalQuery = 'list-type=2&prefix=albums%2F';
   const canonicalPath = '/bucket/albums/trip/' + encodeURIComponent('照片.jpg');
-  const canonical = ['GET', canonicalPath, canonicalQuery, `host:${args.host}\n`, `x-amz-content-sha256:${sha256('')}\n`, `x-amz-date:${amzDate}\n`, 'host;x-amz-content-sha256;x-amz-date', sha256('')].join('\n');
+  const canonical = `GET\n${canonicalPath}\n${canonicalQuery}\nhost:${args.host}\nx-amz-content-sha256:${sha256('')}\nx-amz-date:${amzDate}\n\nhost;x-amz-content-sha256;x-amz-date\n${sha256('')}`;
   const scope = `${date}/auto/s3/aws4_request`;
   const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, sha256(canonical)].join('\n');
   let key = Buffer.from('AWS4SK');
   for (const part of [date, 'auto', 's3', 'aws4_request']) key = hmac(key, part);
   assert.equal(headers.authorization, `AWS4-HMAC-SHA256 Credential=AK/${scope}, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=${hmac(key, toSign).toString('hex')}`);
+});
+
+test('signature matches the canonical request hash returned by Cloudflare R2', () => {
+  const args = { method: 'GET', host: 'b0d00a11233e563f6ae4342de03bd596.r2.cloudflarestorage.com', pathname: '/life-hyper', query: 'list-type=2&prefix=albums%2F', accessKey: 'test-access', secretKey: 'test-secret', now: new Date('2026-11-28T13:35:24.000Z') };
+  const scope = '20261128/auto/s3/aws4_request';
+  const canonical = `GET\n/life-hyper\nlist-type=2&prefix=albums%2F\nhost:${args.host}\nx-amz-content-sha256:${sha256('')}\nx-amz-date:20261128T133524Z\n\nhost;x-amz-content-sha256;x-amz-date\n${sha256('')}`;
+  const canonicalHash = '854e142c19c15bed5a3a7615943dcb59c262fa95733fbda9b7d35e6e72305476';
+  assert.equal(sha256(canonical), canonicalHash);
+  let key = Buffer.from('AWS4test-secret');
+  for (const part of ['20261128', 'auto', 's3', 'aws4_request']) key = hmac(key, part);
+  const signature = hmac(key, `AWS4-HMAC-SHA256\n20261128T133524Z\n${scope}\n${canonicalHash}`).toString('hex');
+  assert.equal(signedHeaders(args).authorization, `AWS4-HMAC-SHA256 Credential=test-access/${scope}, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=${signature}`);
+});
+
+test('S3 path and query signing percent-encodes reserved punctuation', () => {
+  const args = { method: 'GET', host: 'h', pathname: "/b/albums/照片 !'()*.jpg", query: "prefix=albums%2F!'()*", accessKey: 'AK', secretKey: 'SK', now: new Date(0) };
+  const canonical = `GET\n/b/albums/%E7%85%A7%E7%89%87%20%21%27%28%29%2A.jpg\nprefix=albums%2F%21%27%28%29%2A\nhost:h\nx-amz-content-sha256:${sha256('')}\nx-amz-date:19700101T000000Z\n\nhost;x-amz-content-sha256;x-amz-date\n${sha256('')}`;
+  let key = Buffer.from('AWS4SK');
+  for (const part of ['19700101', 'auto', 's3', 'aws4_request']) key = hmac(key, part);
+  const signature = hmac(key, `AWS4-HMAC-SHA256\n19700101T000000Z\n19700101/auto/s3/aws4_request\n${sha256(canonical)}`).toString('hex');
+  assert.ok(signedHeaders(args).authorization.endsWith('Signature=' + signature));
 });
 
 test('canonical query sorting and encoding are order-independent', () => {
@@ -41,7 +61,7 @@ function xmlList(entries, next) {
 test('fetchContent pages through listings, decodes XML entities and writes verified bytes', async () => {
   const objects = new Map([
     ['albums/trip/index.md', Buffer.from('---\ntitle: "T"\n---\n')],
-    ['albums/trip/照片 & 更多.jpg', Buffer.from('original bytes')],
+    ['albums/trip/照片 & 更多!()*.jpg', Buffer.from('original bytes')],
     ['albums/other/index.md', Buffer.from('---\ntitle: "O"\n---\n')],
   ]);
   const requests = [];
@@ -63,9 +83,10 @@ test('fetchContent pages through listings, decodes XML entities and writes verif
   try {
     const count = await fetchContent({ accountId: 'account', accessKey: 'AK', secretKey: 'SK', bucket: 'bucket', content, request });
     assert.equal(count, 3);
-    assert.equal(await fs.readFile(path.join(content, 'trip/照片 & 更多.jpg'), 'utf8'), 'original bytes');
+    assert.equal(await fs.readFile(path.join(content, 'trip/照片 & 更多!()*.jpg'), 'utf8'), 'original bytes');
     assert.ok(await fs.readFile(path.join(content, 'other/index.md'), 'utf8'));
     assert.ok(requests.some(r => r.url.includes('continuation-token=page2')));
+    assert.ok(requests.some(r => r.url.endsWith('%E7%85%A7%E7%89%87%20%26%20%E6%9B%B4%E5%A4%9A%21%28%29%2A.jpg')));
   } finally { await fs.rm(content, { recursive: true, force: true }); }
 });
 
